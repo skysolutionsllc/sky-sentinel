@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" alt="Sky Sentinel Logo" width="400">
+  <img src="assets/logo-readme.png" alt="Sky Sentinel Logo" width="400">
 </p>
 
 <h1 align="center">Sky Sentinel</h1>
@@ -928,7 +928,7 @@ sky-sentinel/
 ---
 
 <p align="center">
-  <img src="assets/logo.png" alt="Sky Sentinel" width="200">
+  <img src="assets/logo-readme.png" alt="Sky Sentinel" width="200">
   <br><br>
   <strong>Sky Sentinel</strong> — Moving CMS from reactive review to proactive prevention<br>
   <em>Where AI amplifies human expertise, not replaces it.</em>
