@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
-import { ShieldAlert, AlertCircle, AlertTriangle, Info, CheckCircle2 } from 'lucide-react'
+import { ShieldAlert, AlertCircle, AlertTriangle, Info, CheckCircle2, Download } from 'lucide-react'
+import { downloadCSV } from '../utils/hcpcs'
 
 export default function Alerts() {
   const [data, setData] = useState(null)
@@ -45,6 +46,26 @@ export default function Alerts() {
         <span style={{ fontSize: 13, color: 'var(--sky-text-muted)', lineHeight: '36px' }}>
           Showing {data.total} alerts
         </span>
+        <button
+          className="btn-primary"
+          style={{ marginLeft: 'auto', fontSize: 12, padding: '6px 14px' }}
+          onClick={() => downloadCSV(
+            data.alerts || [],
+            [
+              { key: 'supplier_name', label: 'Supplier' },
+              { key: 'supplier_npi', label: 'NPI' },
+              { key: 'supplier_state', label: 'State' },
+              { key: 'risk_score', label: 'Risk Score', accessor: r => Math.round(r.risk_score) },
+              { key: 'risk_level', label: 'Risk Level' },
+              { key: 'alert_type', label: 'Alert Type' },
+              { key: 'summary', label: 'Summary' },
+            ],
+            `sky-sentinel-alerts-${new Date().toISOString().slice(0,10)}.csv`
+          )}
+        >
+          <Download size={14} style={{ marginRight: 6 }} />
+          Export CSV
+        </button>
       </div>
 
       <div className="alert-list">

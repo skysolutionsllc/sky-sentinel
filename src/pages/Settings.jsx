@@ -29,15 +29,15 @@ const PROVIDER_MODELS = {
 }
 
 export default function Settings() {
-  const [provider, setProvider] = useState('anthropic')
-  const [model, setModel] = useState('claude-sonnet-4-20250514')
+  const [provider, setProvider] = useState('openai')
+  const [model, setModel] = useState('gpt-4.1-2025-04-14')
   const [anthropicKey, setAnthropicKey] = useState('')
   const [openaiKey, setOpenaiKey] = useState('')
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    setProvider(localStorage.getItem('llm_provider') || 'anthropic')
-    setModel(localStorage.getItem('llm_model') || 'claude-sonnet-4-20250514')
+    setProvider(localStorage.getItem('llm_provider') || 'openai')
+    setModel(localStorage.getItem('llm_model') || 'gpt-4.1-2025-04-14')
     setAnthropicKey(localStorage.getItem('llm_api_key_anthropic') || '')
     setOpenaiKey(localStorage.getItem('llm_api_key_openai') || '')
   }, [])
@@ -95,8 +95,8 @@ export default function Settings() {
               value={provider}
               onChange={(e) => handleProviderChange(e.target.value)}
             >
-              <option value="anthropic">Anthropic</option>
               <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
               <option value="local">Local (Ollama / Custom)</option>
             </select>
           </div>

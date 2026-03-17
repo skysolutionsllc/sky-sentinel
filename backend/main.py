@@ -5,13 +5,17 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.config import CORS_ORIGINS
 from backend.db.database import init_db
+from backend.auth import (
+    LoginRequest, TokenResponse, authenticate_user, create_token,
+    get_current_user,
+)
 
 app = FastAPI(
     title="Sky Sentinel API",
@@ -32,6 +36,21 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup():
     init_db()
+
+
+# --- Auth endpoints ---
+@app.post("/api/auth/login", response_model=TokenResponse, tags=["Auth"])
+def login(body: LoginRequest):
+    user = authenticate_user(body.username, body.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    token = create_token(user)
+    return TokenResponse(access_token=token, user=user)
+
+
+@app.get("/api/auth/me", tags=["Auth"])
+def get_me(user: dict = Depends(get_current_user)):
+    return user
 
 
 # --- Mount API routers ---

@@ -122,13 +122,13 @@ class AnthropicProvider(BaseLLMProvider):
 
 
 class OpenAIProvider(BaseLLMProvider):
-    """OpenAI provider using gpt-4o or gpt-4o-mini."""
+    """OpenAI provider — primary LLM for fraud detection and investigation."""
 
     def __init__(self, model_name: str = None, api_key: str = None):
         import openai
         key = api_key or OPENAI_API_KEY
         self.client = openai.OpenAI(api_key=key)
-        self.model = model_name or "gpt-4o"
+        self.model = model_name or LLM_MODEL or "gpt-4.1"
 
     def _call(self, system: str, prompt: str, max_tokens: int = 1500) -> str:
         try:

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import USHeatmap from '../components/charts/USHeatmap'
 import FairnessPanel from '../components/charts/FairnessPanel'
+import { getEquipmentName } from '../utils/hcpcs'
 
 // --- Custom AI Icons ---
 const CoreAiIcon = ({ size, color }) => (
@@ -111,17 +112,17 @@ export default function Dashboard() {
 
       {/* Stat Cards */}
       <div className="stats-grid">
-        <div className="stat-card slide-up stagger-1">
+        <div className="stat-card slide-up stagger-1" onClick={() => navigate('/alerts')} style={{ cursor: 'pointer' }}>
           <span className="stat-label">Total Alerts</span>
           <span className="stat-value critical">{stats.total_alerts}</span>
           <span className="stat-sub">{stats.new_alerts} new since last session</span>
         </div>
-        <div className="stat-card slide-up stagger-2">
+        <div className="stat-card slide-up stagger-2" onClick={() => navigate('/alerts')} style={{ cursor: 'pointer' }}>
           <span className="stat-label">Critical Risk</span>
           <span className="stat-value critical">{rd.critical || 0}</span>
           <span className="stat-sub">Immediate attention required</span>
         </div>
-        <div className="stat-card slide-up stagger-3">
+        <div className="stat-card slide-up stagger-3" onClick={() => navigate('/clusters')} style={{ cursor: 'pointer' }}>
           <span className="stat-label">Active Clusters</span>
           <span className="stat-value high">{stats.active_clusters}</span>
           <span className="stat-sub">Coordinated patterns detected</span>

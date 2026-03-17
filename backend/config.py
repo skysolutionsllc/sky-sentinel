@@ -10,12 +10,12 @@ load_dotenv(ROOT_DIR / ".env")
 # LLM
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "mock")  # anthropic | openai | mock
-LLM_MODEL = os.getenv("LLM_MODEL", "claude-sonnet-4-20250514")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")  # openai | anthropic | local | mock
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4.1")
 
-# Two-tier model routing — cheaper model for batch seed, premium for interactive
-LLM_MODEL_BATCH = os.getenv("LLM_MODEL_BATCH", "claude-3-5-haiku-20241022")        # Used during seed (analyze_supplier, detect_text_similarity)
-LLM_MODEL_INTERACTIVE = os.getenv("LLM_MODEL_INTERACTIVE", "claude-sonnet-4-20250514")  # Used for AI Query, cluster analysis
+# Three-tier model routing — ML ensemble (local) → encoder-proxy (batch) → decoder (interactive)
+LLM_MODEL_BATCH = os.getenv("LLM_MODEL_BATCH", "gpt-4.1-mini")          # Used during seed (analyze_supplier, detect_text_similarity)
+LLM_MODEL_INTERACTIVE = os.getenv("LLM_MODEL_INTERACTIVE", "gpt-4.1")   # Used for AI Query, cluster analysis
 
 # Database
 _DEFAULT_DB_DIR = Path(__file__).resolve().parent / "db"

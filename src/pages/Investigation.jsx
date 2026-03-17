@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
-import { Search, Settings, Microscope, BarChart2, Loader2, Save } from 'lucide-react'
+import { Search, Settings, Microscope, BarChart2, Loader2, Save, RotateCcw, BookOpen } from 'lucide-react'
 
 const DEFAULT_WEIGHTS = {
   billing_volume_weight: 20,
@@ -11,6 +11,46 @@ const DEFAULT_WEIGHTS = {
   llm_context_weight: 15,
   cluster_association_weight: 15,
   risk_threshold: 50,
+}
+
+const PRESETS = {
+  'National Baseline': DEFAULT_WEIGHTS,
+  'Florida DME Focus': {
+    billing_volume_weight: 25,
+    growth_rate_weight: 25,
+    hcpcs_mix_weight: 15,
+    geographic_spread_weight: 10,
+    llm_context_weight: 15,
+    cluster_association_weight: 10,
+    risk_threshold: 45,
+  },
+  'New Supplier Focus': {
+    billing_volume_weight: 15,
+    growth_rate_weight: 30,
+    hcpcs_mix_weight: 20,
+    geographic_spread_weight: 10,
+    llm_context_weight: 15,
+    cluster_association_weight: 10,
+    risk_threshold: 40,
+  },
+  'Wheelchair Fraud': {
+    billing_volume_weight: 20,
+    growth_rate_weight: 15,
+    hcpcs_mix_weight: 30,
+    geographic_spread_weight: 10,
+    llm_context_weight: 15,
+    cluster_association_weight: 10,
+    risk_threshold: 45,
+  },
+  'Cluster Ring Detection': {
+    billing_volume_weight: 10,
+    growth_rate_weight: 15,
+    hcpcs_mix_weight: 10,
+    geographic_spread_weight: 20,
+    llm_context_weight: 15,
+    cluster_association_weight: 30,
+    risk_threshold: 55,
+  },
 }
 
 const WEIGHT_LABELS = {
@@ -24,10 +64,15 @@ const WEIGHT_LABELS = {
 }
 
 export default function Investigation() {
-  const [weights, setWeights] = useState(DEFAULT_WEIGHTS)
+  const [weights, setWeights] = useState(() => {
+    const saved = localStorage.getItem('investigation_weights')
+    return saved ? JSON.parse(saved) : DEFAULT_WEIGHTS
+  })
+  const [selectedPreset, setSelectedPreset] = useState('')
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
   const [patterns, setPatterns] = useState([])
+  const [savedMsg, setSavedMsg] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -45,6 +90,26 @@ export default function Investigation() {
 
   const handleWeightChange = (key, value) => {
     setWeights(prev => ({ ...prev, [key]: parseFloat(value) }))
+    setSelectedPreset('')
+  }
+
+  const handlePresetChange = (presetName) => {
+    if (presetName && PRESETS[presetName]) {
+      setWeights({ ...PRESETS[presetName] })
+      setSelectedPreset(presetName)
+    }
+  }
+
+  const handleSave = () => {
+    localStorage.setItem('investigation_weights', JSON.stringify(weights))
+    setSavedMsg(true)
+    setTimeout(() => setSavedMsg(false), 2000)
+  }
+
+  const handleReset = () => {
+    setWeights({ ...DEFAULT_WEIGHTS })
+    setSelectedPreset('')
+    localStorage.removeItem('investigation_weights')
   }
 
   return (
@@ -63,6 +128,38 @@ export default function Investigation() {
           <div className="chart-title flex-center gap-2" style={{ marginBottom: 20 }}>
             <Settings size={18} /> Threshold Tuner
           </div>
+
+          {/* Presets */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+            <select
+              className="filter-select"
+              value={selectedPreset}
+              onChange={e => handlePresetChange(e.target.value)}
+              style={{ flex: 1, minWidth: 140 }}
+            >
+              <option value="">Load Preset...</option>
+              {Object.keys(PRESETS).map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+            <button
+              className="btn-primary"
+              style={{ fontSize: 12, padding: '6px 12px' }}
+              onClick={handleSave}
+            >
+              <Save size={14} style={{ marginRight: 4 }} />
+              {savedMsg ? '✓ Saved!' : 'Save'}
+            </button>
+            <button
+              className="btn-primary"
+              style={{ fontSize: 12, padding: '6px 12px', background: 'rgba(255,255,255,0.06)' }}
+              onClick={handleReset}
+            >
+              <RotateCcw size={14} style={{ marginRight: 4 }} />
+              Reset
+            </button>
+          </div>
+
           <p style={{ fontSize: 13, color: 'var(--sky-text-secondary)', marginBottom: 20 }}>
             Adjust the weight of each anomaly dimension and the risk threshold to see how the alert population changes.
           </p>

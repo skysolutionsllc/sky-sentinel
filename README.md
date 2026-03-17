@@ -17,7 +17,7 @@
   <img src="https://img.shields.io/badge/Python-3.11+-blue?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React">
   <img src="https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white" alt="FastAPI">
-  <img src="https://img.shields.io/badge/Claude_AI-Multi--Model-8B5CF6?logo=anthropic&logoColor=white" alt="Claude">
+  <img src="https://img.shields.io/badge/OpenAI-GPT--4.1-412991?logo=openai&logoColor=white" alt="OpenAI">
   <img src="https://img.shields.io/badge/CMS_Data-Live_API-FF6B35" alt="CMS Data">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
 </p>
@@ -77,7 +77,7 @@ Sky Sentinel addresses this gap by combining three detection layers that no trad
 |---|---|---|
 | **Ensemble AI Detection** | Individual suppliers with billing volumes, growth rates, or HCPCS mixes that deviate from peer baselines — detected by three complementary ML algorithms working together | ❌ Typically rely on a single model or threshold |
 | **DBSCAN Cross-NPI Clustering** | Coordinated groups of suppliers that individually look normal but collectively show synchronized suspicious patterns | ❌ No cross-entity analysis |
-| **Two-Stage LLM Pipeline** | Encoder-style classification for rapid scoring + decoder LLM (Claude) for human-readable narrative explanations of *why* patterns are suspicious | ❌ Cannot interpret clinical or investigative context |
+| **Two-Stage LLM Pipeline** | Encoder-style classification for rapid scoring + decoder LLM (GPT-4.1) for human-readable narrative explanations of *why* patterns are suspicious | ❌ Cannot interpret clinical or investigative context |
 | **Human-in-the-Loop Controls** | Investigator-driven hypothesis testing, tunable sensitivity, pattern creation | ❌ Static rules require developer updates |
 | **Algorithmic Fairness Monitoring** | Geographic bias detection — ensures alerts aren't disproportionately concentrated in specific regions | ❌ No bias monitoring |
 
@@ -133,10 +133,10 @@ Following the same architecture used by IBM's watsonx fraud detection, Sky Senti
 
 | Stage | Model Type | Role | Speed | Cost |
 |---|---|---|---|---|
-| **Stage 1: Classification** | Encoder-style (batch tier — Claude Haiku) | Rapid scoring, pattern classification, structured risk assessment during data ingestion | Fast | Low |
-| **Stage 2: Reasoning** | Decoder (Claude Sonnet 4) | Human-readable narrative explanations, investigator Q&A, contextual analysis | Deliberate | Premium |
+| **Stage 1: Classification** | Encoder-style (batch tier — GPT-4.1 Mini) | Rapid scoring, pattern classification, structured risk assessment during data ingestion | Fast | Low |
+| **Stage 2: Reasoning** | Decoder (GPT-4.1) | Human-readable narrative explanations, investigator Q&A, contextual analysis | Deliberate | Premium |
 
-> **Why two stages?** In production, Stage 1 would use purpose-built encoder models (BERT/RoBERTa) for sub-millisecond classification. In this demo, we use Claude Haiku as a lightweight classification proxy. The key architectural insight — borrowed from IBM's ensemble approach — is that **you don't need expensive reasoning for every operation**, only for the cases that require human-readable explanation.
+> **Why two stages?** In production, Stage 1 would use purpose-built encoder models (BERT/RoBERTa) for sub-millisecond classification. In this demo, we use GPT-4.1 Mini as a lightweight classification proxy. The key architectural insight — borrowed from IBM's ensemble approach — is that **you don't need expensive reasoning for every operation**, only for the cases that require human-readable explanation.
 
 **Example Stage 2 output (decoder reasoning):**
 > *"DME Supplier NPI-3752683633 (Metro Medical Group D) — 50% of sampled claims involve ultra-high-cost power wheelchair accessories (K0871: $23,687, K0856: $27,020) totaling $50,707 in just two claims. Enrolled only 4-5 months ago, yet immediately billing for complex, high-reimbursement DME categories. This concentration is highly unusual for a newly enrolled supplier and represents classic fraud indicators."*
@@ -340,11 +340,33 @@ Configurable model selection with support for multiple providers:
 
 | Provider | Available Models |
 |---|---|
+| **OpenAI** *(default)* | GPT-4.1, GPT-4.1 Mini, GPT-4.1 Nano, o3, o4-mini, GPT-4o, GPT-4o Mini |
 | **Anthropic** | Claude Sonnet 4, Claude Opus 4, Claude 3.7 Sonnet, Claude 3.5 Sonnet, Claude 3.5 Haiku |
-| **OpenAI** | GPT-4.1, GPT-4.1 Mini, GPT-4.1 Nano, o3, o4-mini, GPT-4o, GPT-4o Mini |
 | **Local (Ollama)** | Llama 3, Mistral, DeepSeek R1, Qwen 2.5, Phi-4, Gemma 3 |
 
 API keys are stored in browser localStorage and sent via headers — never logged on the server.
+
+---
+
+## Authentication & Role-Based Access Control
+
+Sky Sentinel uses **JWT-based authentication** with three pre-configured roles:
+
+| Role | Dashboard | Alerts | Clusters | AI Query | Investigation Controls | Settings |
+|---|---|---|---|---|---|---|
+| **Admin** | ✅ | ✅ | ✅ | ✅ | ✅ Full access | ✅ LLM config, API keys |
+| **Investigator** | ✅ | ✅ | ✅ | ✅ | ✅ Threshold tuning | ❌ Hidden |
+| **Viewer** | ✅ | ✅ | ✅ | ✅ | ❌ Hidden | ❌ Hidden |
+
+**Demo Quick-Access Credentials:**
+
+| Username | Password | Role |
+|---|---|---|
+| `admin` | `admin123` | Full access |
+| `investigator` | `invest123` | Everything except Settings |
+| `viewer` | `viewer123` | Read-only dashboard views |
+
+The login page includes one-click demo access buttons for each role.
 
 ---
 
@@ -432,7 +454,7 @@ The final risk score (0–100) combines all three layers with transparent, adjus
 | **Growth Rate Anomaly** | 20% | Time-series analysis | Quarter-over-quarter billing acceleration; catches ramp-up fraud patterns |
 | **HCPCS Mix Deviation** | 15% | Peer comparison | Whether a supplier concentrates on high-cost codes versus diversified billing |
 | **Geographic Spread** | 15% | Beneficiary distribution | Whether beneficiaries span an unusually wide area versus local service patterns |
-| **LLM Contextual Findings** | 15% | Claude AI analysis | AI-assessed severity based on documentation patterns, policy compliance, and narrative coherence |
+| **LLM Contextual Findings** | 15% | GPT-4.1 AI analysis | AI-assessed severity based on documentation patterns, policy compliance, and narrative coherence |
 | **Cluster Association** | 15% | DBSCAN membership | Whether the supplier belongs to a behaviorally similar group suggesting coordination |
 
 > **These weights are adjustable** through the Investigation Controls page, allowing analysts to tune detection sensitivity for different investigation types.
@@ -446,20 +468,20 @@ Sky Sentinel implements **intelligent three-tier model routing** — following t
 | Tier | Model Type | Current Model | Use Case | Rationale |
 |---|---|---|---|---|
 | **ML Ensemble** | Traditional ML | Isolation Forest, Z-Score, DBSCAN | Anomaly scoring, peer deviation, cluster detection | Sub-second, zero API cost, runs locally |
-| **Batch (Encoder Proxy)** | Fast LLM | Claude 3.5 Haiku | Seed-time narrative generation (~47 supplier assessments) | Lightweight classification-style analysis; in production, this tier would use encoder-only models (BERT/RoBERTa) for sub-millisecond scoring |
-| **Interactive (Decoder)** | Reasoning LLM | Claude Sonnet 4 | AI Query page, cluster analysis, real-time investigation | Premium reasoning for user-facing features where depth, nuance, and natural language explanation matter most |
+| **Batch (Encoder Proxy)** | Fast LLM | GPT-4.1 Mini | Seed-time narrative generation (~47 supplier assessments) | Lightweight classification-style analysis; in production, this tier would use encoder-only models (BERT/RoBERTa) for sub-millisecond scoring |
+| **Interactive (Decoder)** | Reasoning LLM | GPT-4.1 | AI Query page, cluster analysis, real-time investigation | Premium reasoning for user-facing features where depth, nuance, and natural language explanation matter most |
 
 > **Architecture note:** IBM's watsonx fraud detection uses the same tiered approach — fast predictive ML handles 95% of cases, with expensive LLM reasoning reserved for ambiguous cases that need contextual judgment. Our batch tier serves as the classification stage; our interactive tier serves as the reasoning stage.
 
 **Configuration via `.env`:**
 ```bash
-LLM_MODEL_BATCH=claude-3-5-haiku-20241022        # Encoder-proxy / classification tier
-LLM_MODEL_INTERACTIVE=claude-sonnet-4-20250514    # Decoder / reasoning tier
+LLM_MODEL_BATCH=gpt-4.1-mini          # Encoder-proxy / classification tier
+LLM_MODEL_INTERACTIVE=gpt-4.1         # Decoder / reasoning tier
 ```
 
-**Why this matters:** Running 47 full narrative assessments during seeding with Sonnet 4 costs ~$1.50 and takes ~5 minutes. Switching to Haiku for batch operations reduces this to ~$0.15 and ~1 minute — while keeping the premium model available for the features users actually interact with.
+**Why this matters:** Running 47 full narrative assessments during seeding with GPT-4.1 costs ~$1.00 and takes ~3 minutes. Switching to GPT-4.1 Mini for batch operations reduces this to ~$0.10 and ~1 minute — while keeping the premium model available for the features users actually interact with.
 
-The system also supports **swappable LLM providers** (Anthropic, OpenAI, Local/Ollama) configurable through both environment variables and the in-app Settings page, ensuring vendor flexibility for government deployments.
+The system supports **swappable LLM providers** (OpenAI, Anthropic, Local/Ollama) configurable through both environment variables and the in-app Settings page, ensuring vendor flexibility for government deployments.
 
 ---
 
@@ -490,10 +512,10 @@ The system also supports **swappable LLM providers** (Anthropic, OpenAI, Local/O
 │  │              │  │               │  │  (Multi-Model)   │  │
 │  │ • Dashboard  │  │ • Isolation   │  │                  │  │
 │  │ • Suppliers  │  │   Forest      │  │ BATCH TIER:      │  │
-│  │ • Alerts     │  │ • Z-Score     │  │ • Haiku (seed)   │  │
-│  │ • Clusters   │  │ • DBSCAN      │  │                  │  │
+│  │ • Alerts     │  │ • Z-Score     │  │ • GPT-4.1 Mini   │  │
+│  │ • Clusters   │  │ • DBSCAN      │  │   (seed/batch)   │  │
 │  │ • Claims     │  │ • Composite   │  │ INTERACTIVE:     │  │
-│  │ • Investig.  │  │   Scoring     │  │ • Sonnet (query) │  │
+│  │ • Investig.  │  │   Scoring     │  │ • GPT-4.1 (query)│  │
 │  │ • Settings   │  │               │  │ • Mock fallback  │  │
 │  └──────┬───────┘  └───────┬───────┘  └────────┬─────────┘  │
 │         └──────────────────┴───────────────────┘             │
@@ -516,8 +538,8 @@ The system also supports **swappable LLM providers** (Anthropic, OpenAI, Local/O
 |---|---|
 | **Single SPA** | Consolidated into one unified dashboard for seamless investigator workflow |
 | **SQLite over PostgreSQL** | Zero-config portability — judges can clone and run immediately without database setup. SQLAlchemy ORM provides a clean migration path to PostgreSQL for production |
-| **Multi-model LLM routing** | Batch tier (Haiku) for cost-efficient seeding; Interactive tier (Sonnet) for premium user-facing reasoning |
-| **Swappable LLM adapter** | Abstract `BaseLLMProvider` interface with `AnthropicProvider`, `OpenAIProvider`, `LocalProvider`, and `MockLLMProvider` fallback — if the API is unavailable during demo, the system gracefully falls back to pre-generated narratives |
+| **Multi-model LLM routing** | Batch tier (GPT-4.1 Mini) for cost-efficient seeding; Interactive tier (GPT-4.1) for premium user-facing reasoning |
+| **Swappable LLM adapter** | Abstract `BaseLLMProvider` interface with `OpenAIProvider`, `AnthropicProvider`, `LocalProvider`, and `MockLLMProvider` fallback — if the API is unavailable during demo, the system gracefully falls back to pre-generated narratives |
 | **Real CMS data + synthetic fraud** | Real supplier data provides authenticity; synthetic fraud scenarios ensure compelling demo stories |
 | **Two-tier model routing** | Optimizes API cost and latency without sacrificing interactive quality |
 
@@ -706,7 +728,7 @@ Healthcare delivery varies widely — unusual billing may reflect specialty prac
 - Navigate to Alert Rankings → Show diversified evidence tags across different suppliers
 - Click **Metro Medical Group D** (Risk Score: 89 — Critical)
 - Show the risk gauge, 6-factor breakdown, and 4-quarter billing timeline
-- **Key moment:** Scroll to the AI Risk Assessment → Claude's narrative identifies specific HCPCS codes, dollar amounts, enrollment timing, and cluster associations
+- **Key moment:** Scroll to the AI Risk Assessment → GPT-4.1's narrative identifies specific HCPCS codes, dollar amounts, enrollment timing, and cluster associations
 - *"The AI doesn't just say 'high risk' — it tells the investigator exactly what to look for and why. It cites specific claim amounts, mentions the supplier was enrolled only months ago, and recommends coordinated review with linked NPIs."*
 
 ### Act 3: "The Hidden Network" (2 minutes)
@@ -758,7 +780,7 @@ Live animated walkthroughs captured from the running application:
 
 - **Python 3.11+** and **pip**
 - **Node.js 18+** and **npm**
-- **Anthropic API key** (optional — the system falls back to mock LLM responses without it)
+- **OpenAI API key** (optional — the system falls back to mock LLM responses without it)
 
 ### 1. Clone the Repository
 
@@ -771,10 +793,10 @@ cd sky-sentinel
 
 ```bash
 cp .env.example .env
-# Edit .env and add your Anthropic API key (optional)
-# Optionally configure two-tier model routing:
-#   LLM_MODEL_BATCH=claude-3-5-haiku-20241022
-#   LLM_MODEL_INTERACTIVE=claude-sonnet-4-20250514
+# Edit .env and add your OpenAI API key (optional)
+# Configure two-tier model routing:
+#   LLM_MODEL_BATCH=gpt-4.1-mini
+#   LLM_MODEL_INTERACTIVE=gpt-4.1
 ```
 
 ### 3. Install Dependencies
@@ -848,7 +870,7 @@ On first boot the entrypoint automatically creates tables and seeds the database
 - FastAPI serves the built frontend directly from the container.
 - `/api/*` stays on the backend exactly as before.
 - Non-API routes such as `/alerts` or `/suppliers/1234567890` fall back to `index.html` for SPA routing.
-- `LLM_PROVIDER=mock` remains the default, so the app boots without Anthropic or OpenAI credentials.
+- `LLM_PROVIDER=openai` is the default; set to `mock` for zero-API-key demo mode.
 - SQLite persistence is controlled by `DATABASE_URL`; for Coolify, mount `/data` and keep `DATABASE_URL=sqlite:////data/sky_sentinel.db`.
 
 #### Environment Variables
@@ -857,9 +879,9 @@ On first boot the entrypoint automatically creates tables and seeds the database
 |---|---|---|
 | `BACKEND_PORT` | `8000` | Port uvicorn listens on |
 | `DATABASE_URL` | `sqlite:////data/sky_sentinel.db` | SQLite path (mount `/data` for persistence) |
-| `LLM_PROVIDER` | `mock` | `anthropic`, `openai`, `local`, or `mock` |
-| `ANTHROPIC_API_KEY` | *(empty)* | Required when `LLM_PROVIDER=anthropic` |
+| `LLM_PROVIDER` | `openai` | `openai`, `anthropic`, `local`, or `mock` |
 | `OPENAI_API_KEY` | *(empty)* | Required when `LLM_PROVIDER=openai` |
+| `ANTHROPIC_API_KEY` | *(empty)* | Required when `LLM_PROVIDER=anthropic` |
 | `CMS_API_BASE_URL` | `https://data.cms.gov/data-api/v1/dataset` | CMS data endpoint |
 
 #### Deploy on Coolify
@@ -872,7 +894,7 @@ On first boot the entrypoint automatically creates tables and seeds the database
    - `BACKEND_PORT=8000`
    - `DATABASE_URL=sqlite:////data/sky_sentinel.db`
    - `LLM_PROVIDER=mock` unless you want a live provider
-   - `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` only if you switch providers
+   - `OPENAI_API_KEY` — required for LLM features (or use `LLM_PROVIDER=mock` for demo)
 6. Deploy — Coolify will build the image, initialize the database on first boot, and start the single container.
 
 ---
@@ -893,7 +915,7 @@ On first boot the entrypoint automatically creates tables and seeds the database
 | **Database** | SQLite | 3.x | Zero-config portable database |
 | **ML** | scikit-learn | 1.6 | Isolation Forest, DBSCAN, StandardScaler |
 | **Data** | Pandas + NumPy | — | Data processing and feature engineering |
-| **LLM** | Anthropic Claude | Sonnet 4 + Haiku 3.5 | Multi-tier contextual analysis and narrative generation |
+| **LLM** | OpenAI GPT-4.1 | GPT-4.1 + GPT-4.1 Mini | Multi-tier contextual analysis and narrative generation |
 | **HTTP Client** | HTTPX | — | Async CMS API data fetching |
 
 ---
@@ -905,7 +927,7 @@ On first boot the entrypoint automatically creates tables and seeds the database
 | **Mission Relevance** | High | Directly targets CMS Program Integrity's #1 challenge — proactive DME fraud detection. Uses real CMS supplier data. Designed as a complementary intelligence layer alongside existing detection infrastructure |
 | **Technical Soundness** | High | Three-layer detection pipeline (statistical ML + behavioral clustering + LLM reasoning). Composite risk scoring with transparent, adjustable weights. Peer grouping methodology grounded in CMS data practices. Real API integration. Multi-model LLM routing for cost optimization |
 | **Explainability & Responsible AI** | High | Every alert includes AI-generated narrative reasoning. Risk scores decompose into 6 visible factors. No automated enforcement — all actions require investigator confirmation. Decision audit trail. Geographic fairness monitoring. Privacy-first design with no PHI/PII |
-| **Feasibility for Agency Adoption** | High | SQLite → PostgreSQL migration path via SQLAlchemy. Swappable LLM adapter supports vendor flexibility (Anthropic, OpenAI, local LLMs). API-first architecture supports integration with existing case management workflows. Mock fallback ensures demo resilience |
+| **Feasibility for Agency Adoption** | High | SQLite → PostgreSQL migration path via SQLAlchemy. Swappable LLM adapter supports vendor flexibility (OpenAI, Anthropic, local LLMs). API-first architecture supports integration with existing case management workflows. Mock fallback ensures demo resilience. JWT-based role-based access control with 3 roles (Admin, Investigator, Viewer) |
 | **Innovation** | High | First-of-kind integration of ensemble AI anomaly detection + two-stage LLM pipeline for Medicare fraud. Cross-supplier behavioral clustering. Natural language investigation queries. Three-tier model routing for cost/quality optimization. Investigator-defined pattern modeling |
 | **Demo Clarity** | Medium | Clear 4-act narrative arc: Dashboard overview → Individual detection → Coordinated network → Investigator control. Interactive demo with real data. AI Approach banner explicitly communicates advantages |
 
@@ -918,7 +940,7 @@ Sky Sentinel is architecturally designed for progression from hackathon MVP to p
 ### Phase 1: Hackathon MVP (Current)
 - ✅ Ensemble AI anomaly detection (Isolation Forest + Z-Score + DBSCAN composite scoring)
 - ✅ Cross-NPI cluster detection via DBSCAN
-- ✅ Two-stage LLM pipeline: batch classification (Haiku) + interactive reasoning (Sonnet 4)
+- ✅ Two-stage LLM pipeline: batch classification (GPT-4.1 Mini) + interactive reasoning (GPT-4.1)
 - ✅ Human-in-the-Loop investigation controls with 7-dimension threshold tuning
 - ✅ Live CMS Medicare DME Supplier API integration (300+ real suppliers)
 - ✅ Natural language AI query interface
@@ -927,10 +949,9 @@ Sky Sentinel is architecturally designed for progression from hackathon MVP to p
 ### Phase 2: CMS Pilot (3–6 months)
 - **Pre-payment real-time scoring** — score individual claims *before* payment using the ML ensemble, intercepting fraud at the transaction level (following the IBM FAMS approach)
 - **Entity resolution** — detect suppliers that re-incorporate under new names, share addresses, phone numbers, or registered agents with flagged entities (following IBM InfoSphere Identity Insight patterns)
-- **Encoder-only LLM deployment** — replace batch-tier Haiku with purpose-built encoder models (BERT/RoBERTa) for sub-millisecond classification of claim notes and medical necessity documentation
+- **Encoder-only LLM deployment** — replace batch-tier GPT-4.1 Mini with purpose-built encoder models (BERT/RoBERTa) for sub-millisecond classification of claim notes and medical necessity documentation
 - PostgreSQL migration for enterprise scaling
 - Integration with CMS Program Integrity case management workflows
-- Role-based access control for analyst teams
 
 ### Phase 3: Production System (6–12 months)
 - **Knowledge graph construction** — build explicit relationship networks (shared owners, referring physicians, beneficiary overlap) to complement behavioral DBSCAN clustering
@@ -1039,7 +1060,7 @@ sky-sentinel/
 
 - **ACT-IAC** for organizing the AI in Action Hackathon
 - **Centers for Medicare & Medicaid Services (CMS)** for publicly available Medicare provider utilization data
-- **Anthropic** for Claude AI powering the contextual analysis engine
+- **OpenAI** for GPT-4.1 powering the contextual analysis engine
 
 ---
 
