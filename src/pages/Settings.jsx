@@ -10,7 +10,9 @@ const PROVIDER_MODELS = {
     { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku' },
   ],
   openai: [
-    { value: 'gpt-4.1-2025-04-14', label: 'GPT-4.1', isDefault: true },
+    { value: 'gpt-5.4-mini', label: 'GPT-5.4 Mini (Latest)', isDefault: true },
+    { value: 'gpt-5.4-nano', label: 'GPT-5.4 Nano' },
+    { value: 'gpt-4.1-2025-04-14', label: 'GPT-4.1' },
     { value: 'gpt-4.1-mini-2025-04-14', label: 'GPT-4.1 Mini' },
     { value: 'gpt-4.1-nano-2025-04-14', label: 'GPT-4.1 Nano' },
     { value: 'o3-2025-04-16', label: 'o3 (Reasoning)' },

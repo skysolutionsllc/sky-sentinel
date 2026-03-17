@@ -14,7 +14,7 @@ LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")  # openai | anthropic | local
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4.1")
 
 # Three-tier model routing — ML ensemble (local) → encoder-proxy (batch) → decoder (interactive)
-LLM_MODEL_BATCH = os.getenv("LLM_MODEL_BATCH", "gpt-4.1-mini")          # Used during seed (analyze_supplier, detect_text_similarity)
+LLM_MODEL_BATCH = os.getenv("LLM_MODEL_BATCH", "gpt-5.4-mini")          # Used during seed (analyze_supplier, detect_text_similarity)
 LLM_MODEL_INTERACTIVE = os.getenv("LLM_MODEL_INTERACTIVE", "gpt-4.1")   # Used for AI Query, cluster analysis
 
 # Database

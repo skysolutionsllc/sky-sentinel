@@ -133,10 +133,10 @@ Following the same architecture used by IBM's watsonx fraud detection, Sky Senti
 
 | Stage | Model Type | Role | Speed | Cost |
 |---|---|---|---|---|
-| **Stage 1: Classification** | Encoder-style (batch tier — GPT-4.1 Mini) | Rapid scoring, pattern classification, structured risk assessment during data ingestion | Fast | Low |
+| **Stage 1: Classification** | Encoder-style (batch tier — GPT-5.4 Mini) | Rapid scoring, pattern classification, structured risk assessment during data ingestion | Fast | Low |
 | **Stage 2: Reasoning** | Decoder (GPT-4.1) | Human-readable narrative explanations, investigator Q&A, contextual analysis | Deliberate | Premium |
 
-> **Why two stages?** In production, Stage 1 would use purpose-built encoder models (BERT/RoBERTa) for sub-millisecond classification. In this demo, we use GPT-4.1 Mini as a lightweight classification proxy. The key architectural insight — borrowed from IBM's ensemble approach — is that **you don't need expensive reasoning for every operation**, only for the cases that require human-readable explanation.
+> **Why two stages?** In production, Stage 1 would use purpose-built encoder models (BERT/RoBERTa) for sub-millisecond classification. In this demo, we use GPT-5.4 Mini as a lightweight classification proxy. The key architectural insight — borrowed from IBM's ensemble approach — is that **you don't need expensive reasoning for every operation**, only for the cases that require human-readable explanation.
 
 **Example Stage 2 output (decoder reasoning):**
 > *"DME Supplier NPI-3752683633 (Metro Medical Group D) — 50% of sampled claims involve ultra-high-cost power wheelchair accessories (K0871: $23,687, K0856: $27,020) totaling $50,707 in just two claims. Enrolled only 4-5 months ago, yet immediately billing for complex, high-reimbursement DME categories. This concentration is highly unusual for a newly enrolled supplier and represents classic fraud indicators."*
@@ -340,7 +340,7 @@ Configurable model selection with support for multiple providers:
 
 | Provider | Available Models |
 |---|---|
-| **OpenAI** *(default)* | GPT-4.1, GPT-4.1 Mini, GPT-4.1 Nano, o3, o4-mini, GPT-4o, GPT-4o Mini |
+| **OpenAI** *(default)* | GPT-5.4 Mini, GPT-5.4 Nano, GPT-4.1, GPT-4.1 Mini, GPT-4.1 Nano, o3, o4-mini, GPT-4o, GPT-4o Mini |
 | **Anthropic** | Claude Sonnet 4, Claude Opus 4, Claude 3.7 Sonnet, Claude 3.5 Sonnet, Claude 3.5 Haiku |
 | **Local (Ollama)** | Llama 3, Mistral, DeepSeek R1, Qwen 2.5, Phi-4, Gemma 3 |
 
@@ -468,18 +468,18 @@ Sky Sentinel implements **intelligent three-tier model routing** — following t
 | Tier | Model Type | Current Model | Use Case | Rationale |
 |---|---|---|---|---|
 | **ML Ensemble** | Traditional ML | Isolation Forest, Z-Score, DBSCAN | Anomaly scoring, peer deviation, cluster detection | Sub-second, zero API cost, runs locally |
-| **Batch (Encoder Proxy)** | Fast LLM | GPT-4.1 Mini | Seed-time narrative generation (~47 supplier assessments) | Lightweight classification-style analysis; in production, this tier would use encoder-only models (BERT/RoBERTa) for sub-millisecond scoring |
+| **Batch (Encoder Proxy)** | Fast LLM | GPT-5.4 Mini | Seed-time narrative generation (~47 supplier assessments) | Lightweight classification-style analysis; in production, this tier would use encoder-only models (BERT/RoBERTa) for sub-millisecond scoring |
 | **Interactive (Decoder)** | Reasoning LLM | GPT-4.1 | AI Query page, cluster analysis, real-time investigation | Premium reasoning for user-facing features where depth, nuance, and natural language explanation matter most |
 
 > **Architecture note:** IBM's watsonx fraud detection uses the same tiered approach — fast predictive ML handles 95% of cases, with expensive LLM reasoning reserved for ambiguous cases that need contextual judgment. Our batch tier serves as the classification stage; our interactive tier serves as the reasoning stage.
 
 **Configuration via `.env`:**
 ```bash
-LLM_MODEL_BATCH=gpt-4.1-mini          # Encoder-proxy / classification tier
+LLM_MODEL_BATCH=gpt-5.4-mini          # Encoder-proxy / classification tier
 LLM_MODEL_INTERACTIVE=gpt-4.1         # Decoder / reasoning tier
 ```
 
-**Why this matters:** Running 47 full narrative assessments during seeding with GPT-4.1 costs ~$1.00 and takes ~3 minutes. Switching to GPT-4.1 Mini for batch operations reduces this to ~$0.10 and ~1 minute — while keeping the premium model available for the features users actually interact with.
+**Why this matters:** Running 47 full narrative assessments during seeding with GPT-4.1 costs ~$1.00 and takes ~3 minutes. Switching to GPT-5.4 Mini for batch operations reduces this to ~$0.08 and ~30 seconds — while keeping the premium model available for the features users actually interact with.
 
 The system supports **swappable LLM providers** (OpenAI, Anthropic, Local/Ollama) configurable through both environment variables and the in-app Settings page, ensuring vendor flexibility for government deployments.
 
@@ -512,7 +512,7 @@ The system supports **swappable LLM providers** (OpenAI, Anthropic, Local/Ollama
 │  │              │  │               │  │  (Multi-Model)   │  │
 │  │ • Dashboard  │  │ • Isolation   │  │                  │  │
 │  │ • Suppliers  │  │   Forest      │  │ BATCH TIER:      │  │
-│  │ • Alerts     │  │ • Z-Score     │  │ • GPT-4.1 Mini   │  │
+│  │ • Alerts     │  │ • Z-Score     │  │ • GPT-5.4 Mini   │  │
 │  │ • Clusters   │  │ • DBSCAN      │  │   (seed/batch)   │  │
 │  │ • Claims     │  │ • Composite   │  │ INTERACTIVE:     │  │
 │  │ • Investig.  │  │   Scoring     │  │ • GPT-4.1 (query)│  │
@@ -538,7 +538,7 @@ The system supports **swappable LLM providers** (OpenAI, Anthropic, Local/Ollama
 |---|---|
 | **Single SPA** | Consolidated into one unified dashboard for seamless investigator workflow |
 | **SQLite over PostgreSQL** | Zero-config portability — judges can clone and run immediately without database setup. SQLAlchemy ORM provides a clean migration path to PostgreSQL for production |
-| **Multi-model LLM routing** | Batch tier (GPT-4.1 Mini) for cost-efficient seeding; Interactive tier (GPT-4.1) for premium user-facing reasoning |
+| **Multi-model LLM routing** | Batch tier (GPT-5.4 Mini) for cost-efficient seeding; Interactive tier (GPT-4.1) for premium user-facing reasoning |
 | **Swappable LLM adapter** | Abstract `BaseLLMProvider` interface with `OpenAIProvider`, `AnthropicProvider`, `LocalProvider`, and `MockLLMProvider` fallback — if the API is unavailable during demo, the system gracefully falls back to pre-generated narratives |
 | **Real CMS data + synthetic fraud** | Real supplier data provides authenticity; synthetic fraud scenarios ensure compelling demo stories |
 | **Two-tier model routing** | Optimizes API cost and latency without sacrificing interactive quality |
@@ -795,7 +795,7 @@ cd sky-sentinel
 cp .env.example .env
 # Edit .env and add your OpenAI API key (optional)
 # Configure two-tier model routing:
-#   LLM_MODEL_BATCH=gpt-4.1-mini
+#   LLM_MODEL_BATCH=gpt-5.4-mini
 #   LLM_MODEL_INTERACTIVE=gpt-4.1
 ```
 
@@ -915,7 +915,7 @@ On first boot the entrypoint automatically creates tables and seeds the database
 | **Database** | SQLite | 3.x | Zero-config portable database |
 | **ML** | scikit-learn | 1.6 | Isolation Forest, DBSCAN, StandardScaler |
 | **Data** | Pandas + NumPy | — | Data processing and feature engineering |
-| **LLM** | OpenAI GPT-4.1 | GPT-4.1 + GPT-4.1 Mini | Multi-tier contextual analysis and narrative generation |
+| **LLM** | OpenAI GPT | GPT-4.1 + GPT-5.4 Mini | Multi-tier contextual analysis and narrative generation |
 | **HTTP Client** | HTTPX | — | Async CMS API data fetching |
 
 ---
@@ -940,7 +940,7 @@ Sky Sentinel is architecturally designed for progression from hackathon MVP to p
 ### Phase 1: Hackathon MVP (Current)
 - ✅ Ensemble AI anomaly detection (Isolation Forest + Z-Score + DBSCAN composite scoring)
 - ✅ Cross-NPI cluster detection via DBSCAN
-- ✅ Two-stage LLM pipeline: batch classification (GPT-4.1 Mini) + interactive reasoning (GPT-4.1)
+- ✅ Two-stage LLM pipeline: batch classification (GPT-5.4 Mini) + interactive reasoning (GPT-4.1)
 - ✅ Human-in-the-Loop investigation controls with 7-dimension threshold tuning
 - ✅ Live CMS Medicare DME Supplier API integration (300+ real suppliers)
 - ✅ Natural language AI query interface
@@ -949,7 +949,7 @@ Sky Sentinel is architecturally designed for progression from hackathon MVP to p
 ### Phase 2: CMS Pilot (3–6 months)
 - **Pre-payment real-time scoring** — score individual claims *before* payment using the ML ensemble, intercepting fraud at the transaction level (following the IBM FAMS approach)
 - **Entity resolution** — detect suppliers that re-incorporate under new names, share addresses, phone numbers, or registered agents with flagged entities (following IBM InfoSphere Identity Insight patterns)
-- **Encoder-only LLM deployment** — replace batch-tier GPT-4.1 Mini with purpose-built encoder models (BERT/RoBERTa) for sub-millisecond classification of claim notes and medical necessity documentation
+- **Encoder-only LLM deployment** — replace batch-tier GPT-5.4 Mini with purpose-built encoder models (BERT/RoBERTa) for sub-millisecond classification of claim notes and medical necessity documentation
 - PostgreSQL migration for enterprise scaling
 - Integration with CMS Program Integrity case management workflows
 
