@@ -3,10 +3,10 @@ import datetime
 import os
 from typing import Optional
 
+import bcrypt
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from passlib.context import CryptContext
 from pydantic import BaseModel
 
 # JWT config
@@ -14,11 +14,18 @@ JWT_SECRET = os.getenv("JWT_SECRET", "sky-sentinel-demo-secret-change-in-product
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 24
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 # Bearer token extractor
 security = HTTPBearer(auto_error=False)
+
+
+# --- Helpers ---
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
 
 
 # --- Models ---
@@ -51,35 +58,35 @@ class UserInfo(BaseModel):
 DEMO_USERS = {
     # Admins
     "vandana": {
-        "password_hash": pwd_context.hash("admin123"),
+        "password_hash": hash_password("admin123"),
         "role": UserRole.ADMIN,
         "display_name": "Vandana",
     },
     "james": {
-        "password_hash": pwd_context.hash("admin123"),
+        "password_hash": hash_password("admin123"),
         "role": UserRole.ADMIN,
         "display_name": "James",
     },
     # Investigators
     "prasanjit": {
-        "password_hash": pwd_context.hash("invest123"),
+        "password_hash": hash_password("invest123"),
         "role": UserRole.INVESTIGATOR,
         "display_name": "Prasanjit",
     },
     "rajashekar": {
-        "password_hash": pwd_context.hash("invest123"),
+        "password_hash": hash_password("invest123"),
         "role": UserRole.INVESTIGATOR,
         "display_name": "Rajashekar",
     },
     # Viewer
     "kc": {
-        "password_hash": pwd_context.hash("viewer123"),
+        "password_hash": hash_password("viewer123"),
         "role": UserRole.VIEWER,
         "display_name": "KC",
     },
     # Generic demo fallback
     "admin": {
-        "password_hash": pwd_context.hash("admin123"),
+        "password_hash": hash_password("admin123"),
         "role": UserRole.ADMIN,
         "display_name": "Demo Admin",
     },
@@ -93,7 +100,7 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
     user = DEMO_USERS.get(username.lower())
     if not user:
         return None
-    if not pwd_context.verify(password, user["password_hash"]):
+    if not verify_password(password, user["password_hash"]):
         return None
     return {
         "username": username.lower(),
