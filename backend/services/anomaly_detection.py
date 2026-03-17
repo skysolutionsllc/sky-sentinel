@@ -1,4 +1,4 @@
-"""Anomaly detection pipeline — Isolation Forest, Z-score, DBSCAN clustering."""
+"""Ensemble AI anomaly detection pipeline — Isolation Forest, Z-score, DBSCAN clustering."""
 import numpy as np
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import DBSCAN

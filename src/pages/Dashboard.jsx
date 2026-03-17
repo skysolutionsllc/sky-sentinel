@@ -155,8 +155,8 @@ export default function Dashboard() {
               <MultiMethodIcon size={20} color="#F59E0B" />
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#CBD5E1', marginBottom: 4 }}>Multi-Method AI</div>
-              <div style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.4 }}>Isolation Forest + Z-score + DBSCAN — not just one model</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#CBD5E1', marginBottom: 4 }}>Ensemble AI</div>
+              <div style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.4 }}>Isolation Forest + Z-Score + DBSCAN + LLM — multi-model ensemble</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
@@ -165,7 +165,7 @@ export default function Dashboard() {
             </div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#CBD5E1', marginBottom: 4 }}>LLM Reasoning</div>
-              <div style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.4 }}>Explains <em>why</em> a supplier is suspicious, not just a score</div>
+              <div style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.4 }}>Decoder LLM explains <em>why</em> — encoder classifies at speed</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
