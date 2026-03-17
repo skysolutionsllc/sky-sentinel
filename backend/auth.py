@@ -60,29 +60,29 @@ DEMO_USERS = {
     "vandana": {
         "password_hash": hash_password("admin123"),
         "role": UserRole.ADMIN,
-        "display_name": "Vandana",
+        "display_name": "Vandana Tanu",
     },
     "james": {
         "password_hash": hash_password("admin123"),
         "role": UserRole.ADMIN,
-        "display_name": "James",
+        "display_name": "James Galang",
     },
     # Investigators
     "prasanjit": {
         "password_hash": hash_password("invest123"),
         "role": UserRole.INVESTIGATOR,
-        "display_name": "Prasanjit",
+        "display_name": "Prasanjit Deka",
     },
     "rajashekar": {
         "password_hash": hash_password("invest123"),
         "role": UserRole.INVESTIGATOR,
-        "display_name": "Rajashekar",
+        "display_name": "Rajashekar Sabbani",
     },
     # Viewer
     "kc": {
         "password_hash": hash_password("viewer123"),
         "role": UserRole.VIEWER,
-        "display_name": "KC",
+        "display_name": "KC Juvvadi",
     },
     # Generic demo fallback
     "admin": {
