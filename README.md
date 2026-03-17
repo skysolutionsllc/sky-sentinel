@@ -297,10 +297,10 @@ Where Sky Sentinel's **Human-in-the-Loop philosophy** comes to life. Investigato
 </p>
 
 <details>
-<summary>🎬 <strong>Live AI Query Demo (click to expand)</strong></summary>
+<summary>🎬 <strong>Live AI Query Result (click to expand)</strong></summary>
 <br>
 <p align="center">
-  <img src="assets/demo-ai-query.webp" alt="AI Query Demo" width="900">
+  <img src="assets/screenshot-ai-query-response.png" alt="AI Query Response" width="900">
 </p>
 </details>
 
@@ -686,7 +686,7 @@ Live animated walkthroughs captured from the running application:
 
 ### AI-Powered Natural Language Query
 <p align="center">
-  <img src="assets/demo-ai-query.webp" alt="AI Query Demo" width="900">
+  <img src="assets/screenshot-ai-query-response.png" alt="AI Query Response" width="900">
 </p>
 
 ---
