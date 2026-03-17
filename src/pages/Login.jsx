@@ -37,10 +37,6 @@ export default function Login() {
         <div className="login-brand-panel">
           <div className="login-brand-content">
             <img src="/logo.png" alt="Sky Sentinel" className="login-logo" />
-            <h1 className="login-brand-title">Sky Sentinel</h1>
-            <p className="login-brand-subtitle">
-              AI-Augmented Medicare DME Fraud Detection
-            </p>
             <div className="login-brand-divider" />
             <div className="login-brand-features">
               <div className="login-brand-feature">
