@@ -11,11 +11,11 @@ load_dotenv(ROOT_DIR / ".env")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")  # openai | anthropic | local | mock
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4.1")
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-5.4-mini")
 
 # Three-tier model routing — ML ensemble (local) → encoder-proxy (batch) → decoder (interactive)
 LLM_MODEL_BATCH = os.getenv("LLM_MODEL_BATCH", "gpt-5.4-mini")          # Used during seed (analyze_supplier, detect_text_similarity)
-LLM_MODEL_INTERACTIVE = os.getenv("LLM_MODEL_INTERACTIVE", "gpt-4.1")   # Used for AI Query, cluster analysis
+LLM_MODEL_INTERACTIVE = os.getenv("LLM_MODEL_INTERACTIVE", "gpt-5.4-mini")   # Used for AI Query, cluster analysis
 
 # Database
 _DEFAULT_DB_DIR = Path(__file__).resolve().parent / "db"
