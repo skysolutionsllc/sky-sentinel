@@ -49,12 +49,8 @@ COPY backend ./backend
 COPY entrypoint.sh ./entrypoint.sh
 COPY --from=frontend-builder /app/dist ./static
 
-RUN useradd --create-home --home-dir /home/appuser --shell /usr/sbin/nologin appuser && \
-    mkdir -p /data && \
-    chmod +x /app/entrypoint.sh && \
-    chown -R appuser:appuser /app /data
-
-USER appuser
+RUN mkdir -p /data && \
+    chmod +x /app/entrypoint.sh
 
 EXPOSE 8000
 
