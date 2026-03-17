@@ -18,9 +18,17 @@ LLM_MODEL_BATCH = os.getenv("LLM_MODEL_BATCH", "claude-3-5-haiku-20241022")     
 LLM_MODEL_INTERACTIVE = os.getenv("LLM_MODEL_INTERACTIVE", "claude-sonnet-4-20250514")  # Used for AI Query, cluster analysis
 
 # Database
-DB_DIR = Path(__file__).resolve().parent / "db"
-DB_DIR.mkdir(parents=True, exist_ok=True)
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DB_DIR / 'sky_sentinel.db'}")
+_DEFAULT_DB_DIR = Path(__file__).resolve().parent / "db"
+_DEFAULT_DB_DIR.mkdir(parents=True, exist_ok=True)
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{_DEFAULT_DB_DIR / 'sky_sentinel.db'}")
+
+# Ensure parent directory exists for the SQLite file (handles /data/ in Docker)
+if DATABASE_URL.startswith("sqlite"):
+    _db_path = DATABASE_URL.replace("sqlite:///", "").replace("sqlite://", "")
+    try:
+        Path(_db_path).parent.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass  # /data may not be writable outside Docker; SQLAlchemy will error at connect time
 
 # CMS API
 CMS_API_BASE = os.getenv("CMS_API_BASE_URL", "https://data.cms.gov/data-api/v1/dataset")
@@ -38,4 +46,6 @@ CORS_ORIGINS = [
     f"http://localhost:{FRONTEND_PORT}",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
 ]

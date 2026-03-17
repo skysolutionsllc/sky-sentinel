@@ -822,6 +822,59 @@ npm run seed && npm run backend
 npm run dev
 ```
 
+### Docker — Single-Container Deployment
+
+Sky Sentinel ships a production-ready multi-stage `Dockerfile`. The image builds the Vite frontend, runs the FastAPI backend, serves the compiled SPA from the same container, keeps `/api/*` routes on FastAPI, and falls back to `index.html` for non-API client-side routes.
+
+#### Build & Run
+
+```bash
+docker build -t sky-sentinel .
+docker run \
+  --env-file .env \
+  -e BACKEND_PORT=8000 \
+  -e DATABASE_URL=sqlite:////data/sky_sentinel.db \
+  -p 8000:8000 \
+  -v sky_sentinel_data:/data \
+  sky-sentinel
+```
+
+Open **http://localhost:8000** — the app is live.
+
+On first boot the entrypoint automatically creates tables and seeds the database only when the configured database is absent or effectively empty. Restarts do **not** wipe existing data.
+
+#### Runtime Behavior
+
+- FastAPI serves the built frontend directly from the container.
+- `/api/*` stays on the backend exactly as before.
+- Non-API routes such as `/alerts` or `/suppliers/1234567890` fall back to `index.html` for SPA routing.
+- `LLM_PROVIDER=mock` remains the default, so the app boots without Anthropic or OpenAI credentials.
+- SQLite persistence is controlled by `DATABASE_URL`; for Coolify, mount `/data` and keep `DATABASE_URL=sqlite:////data/sky_sentinel.db`.
+
+#### Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `BACKEND_PORT` | `8000` | Port uvicorn listens on |
+| `DATABASE_URL` | `sqlite:////data/sky_sentinel.db` | SQLite path (mount `/data` for persistence) |
+| `LLM_PROVIDER` | `mock` | `anthropic`, `openai`, `local`, or `mock` |
+| `ANTHROPIC_API_KEY` | *(empty)* | Required when `LLM_PROVIDER=anthropic` |
+| `OPENAI_API_KEY` | *(empty)* | Required when `LLM_PROVIDER=openai` |
+| `CMS_API_BASE_URL` | `https://data.cms.gov/data-api/v1/dataset` | CMS data endpoint |
+
+#### Deploy on Coolify
+
+1. Create a new **Docker** resource pointing to this repo.
+2. Set Build Pack to **Dockerfile**.
+3. Set the **Port / Exposed Port** to `8000` unless you also change `BACKEND_PORT`.
+4. Add a persistent storage mount with **Container Path** `/data`.
+5. Set environment variables:
+   - `BACKEND_PORT=8000`
+   - `DATABASE_URL=sqlite:////data/sky_sentinel.db`
+   - `LLM_PROVIDER=mock` unless you want a live provider
+   - `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` only if you switch providers
+6. Deploy — Coolify will build the image, initialize the database on first boot, and start the single container.
+
 ---
 
 ## Technology Stack
