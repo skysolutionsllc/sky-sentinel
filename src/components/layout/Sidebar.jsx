@@ -2,11 +2,14 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import {
   LayoutDashboard, ShieldAlert, Network, Search,
-  MessageSquare, Settings, LogOut, User
+  MessageSquare, Settings, LogOut, User, Eye, RotateCcw
 } from 'lucide-react'
 
 export default function Sidebar() {
-  const { user, logout, canAccessSettings, canAccessInvestigation } = useAuth()
+  const {
+    user, logout, canAccessSettings, canAccessInvestigation,
+    isAdmin, viewAsRole, startViewAs, stopViewAs, effectiveRole,
+  } = useAuth()
 
   const navItems = [
     { path: '/', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
@@ -48,6 +51,87 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-footer">
+        {/* View As — Admin only */}
+        {isAdmin() && (
+          <div style={{
+            padding: '8px 10px',
+            borderRadius: 8,
+            background: viewAsRole ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.03)',
+            border: viewAsRole ? '1px solid rgba(245,158,11,0.25)' : '1px solid transparent',
+            marginBottom: 8,
+            transition: 'all 0.2s ease',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              marginBottom: 6,
+              fontSize: 11,
+              fontWeight: 600,
+              color: '#64748b',
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}>
+              <Eye size={12} />
+              View As
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {['admin', 'investigator', 'viewer'].map(role => (
+                <button
+                  key={role}
+                  onClick={() => startViewAs(role)}
+                  style={{
+                    flex: 1,
+                    padding: '4px 0',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: effectiveRole === role
+                      ? `${roleColors[role]}22`
+                      : 'rgba(255,255,255,0.04)',
+                    color: effectiveRole === role
+                      ? roleColors[role]
+                      : '#64748b',
+                    fontSize: 10,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    textTransform: 'capitalize',
+                    transition: 'all 0.15s ease',
+                    outline: effectiveRole === role
+                      ? `1px solid ${roleColors[role]}44`
+                      : 'none',
+                  }}
+                >
+                  {role === 'investigator' ? 'Invest.' : role.charAt(0).toUpperCase() + role.slice(1)}
+                </button>
+              ))}
+            </div>
+            {viewAsRole && (
+              <button
+                onClick={stopViewAs}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                  width: '100%',
+                  marginTop: 6,
+                  padding: '3px 0',
+                  borderRadius: 4,
+                  border: 'none',
+                  background: 'rgba(245,158,11,0.12)',
+                  color: '#f59e0b',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <RotateCcw size={10} />
+                Back to Admin
+              </button>
+            )}
+          </div>
+        )}
+
         {/* User badge */}
         {user && (
           <div style={{
@@ -63,7 +147,7 @@ export default function Sidebar() {
               width: 32,
               height: 32,
               borderRadius: 8,
-              background: `linear-gradient(135deg, ${roleColors[user.role] || '#3b82f6'}, ${roleColors[user.role] || '#3b82f6'}88)`,
+              background: `linear-gradient(135deg, ${roleColors[effectiveRole] || '#3b82f6'}, ${roleColors[effectiveRole] || '#3b82f6'}88)`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -77,11 +161,11 @@ export default function Sidebar() {
               </div>
               <div style={{
                 fontSize: 11,
-                color: roleColors[user.role] || '#94a3b8',
+                color: roleColors[effectiveRole] || '#94a3b8',
                 fontWeight: 600,
                 textTransform: 'capitalize',
               }}>
-                {user.role}
+                {viewAsRole ? `Viewing as ${viewAsRole}` : effectiveRole}
               </div>
             </div>
             <button

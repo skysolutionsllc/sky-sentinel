@@ -362,11 +362,17 @@ Sky Sentinel uses **JWT-based authentication** with three pre-configured roles:
 
 | Username | Password | Role |
 |---|---|---|
-| `admin` | `admin123` | Full access |
-| `investigator` | `invest123` | Everything except Settings |
-| `viewer` | `viewer123` | Read-only dashboard views |
+| `vandana` | `admin123` | Admin — full access |
+| `james` | `admin123` | Admin — full access |
+| `prasanjit` | `invest123` | Investigator — everything except Settings |
+| `rajashekar` | `invest123` | Investigator — everything except Settings |
+| `kc` | `viewer123` | Viewer — read-only dashboard views |
+| `admin` | `admin123` | Admin (generic demo fallback) |
 
-The login page includes one-click demo access buttons for each role.
+The login page includes one-click quick-access buttons for each team member.
+
+**"View As" Role Impersonation (Admin only):**
+Admins see a "View As" switcher in the sidebar that instantly previews the app as an Investigator or Viewer — navigation items, page access, and UI elements update in real-time without logging out. Click "Back to Admin" to return.
 
 ---
 

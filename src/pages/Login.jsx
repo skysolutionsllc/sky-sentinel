@@ -3,10 +3,18 @@ import { useAuth } from '../contexts/AuthContext'
 import { Shield, Eye, UserCheck, Lock, AlertCircle } from 'lucide-react'
 
 const DEMO_ACCOUNTS = [
-  { username: 'admin', password: 'admin123', role: 'Admin', desc: 'Full access — settings, models, thresholds' },
-  { username: 'investigator', password: 'invest123', role: 'Investigator', desc: 'AI assist, data queries, investigation tools' },
-  { username: 'viewer', password: 'viewer123', role: 'Viewer', desc: 'Read-only dashboard and alert views' },
+  { username: 'vandana', password: 'admin123', role: 'Admin', name: 'Vandana', desc: 'Full access — settings, models, thresholds' },
+  { username: 'james', password: 'admin123', role: 'Admin', name: 'James', desc: 'Full access — settings, models, thresholds' },
+  { username: 'prasanjit', password: 'invest123', role: 'Investigator', name: 'Prasanjit', desc: 'Investigation tools, AI queries, data analysis' },
+  { username: 'rajashekar', password: 'invest123', role: 'Investigator', name: 'Rajashekar', desc: 'Investigation tools, AI queries, data analysis' },
+  { username: 'kc', password: 'viewer123', role: 'Viewer', name: 'KC', desc: 'Read-only dashboard and alert views' },
 ]
+
+const ROLE_ICONS = {
+  Admin: <UserCheck size={18} style={{ color: '#f59e0b', flexShrink: 0 }} />,
+  Investigator: <Shield size={18} style={{ color: '#3b82f6', flexShrink: 0 }} />,
+  Viewer: <Eye size={18} style={{ color: '#22c55e', flexShrink: 0 }} />,
+}
 
 export default function Login() {
   const { login } = useAuth()
@@ -145,12 +153,12 @@ export default function Login() {
           </form>
         </div>
 
-        {/* Quick Login */}
+        {/* Quick Login — Team Members */}
         <div className="glass-card" style={{ padding: 20 }}>
           <p style={{ fontSize: 12, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14 }}>
-            Demo Quick Access
+            Team Quick Access
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {DEMO_ACCOUNTS.map((acct) => (
               <button
                 key={acct.username}
@@ -160,7 +168,7 @@ export default function Login() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 12,
-                  padding: '10px 14px',
+                  padding: '8px 14px',
                   borderRadius: 8,
                   border: '1px solid var(--sky-border)',
                   background: 'rgba(255,255,255,0.02)',
@@ -179,15 +187,20 @@ export default function Login() {
                   e.currentTarget.style.borderColor = 'var(--sky-border)'
                 }}
               >
-                {acct.role === 'Admin' && <UserCheck size={18} style={{ color: '#f59e0b', flexShrink: 0 }} />}
-                {acct.role === 'Investigator' && <Shield size={18} style={{ color: '#3b82f6', flexShrink: 0 }} />}
-                {acct.role === 'Viewer' && <Eye size={18} style={{ color: '#22c55e', flexShrink: 0 }} />}
+                {ROLE_ICONS[acct.role]}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600 }}>{acct.role}</div>
+                  <div style={{ fontWeight: 600 }}>{acct.name}</div>
                   <div style={{ fontSize: 11, color: '#64748b' }}>{acct.desc}</div>
                 </div>
-                <span style={{ fontSize: 11, color: '#475569', fontFamily: 'monospace' }}>
-                  {acct.username}
+                <span style={{
+                  fontSize: 10,
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  background: acct.role === 'Admin' ? 'rgba(245,158,11,0.15)' : acct.role === 'Investigator' ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.15)',
+                  color: acct.role === 'Admin' ? '#f59e0b' : acct.role === 'Investigator' ? '#3b82f6' : '#22c55e',
+                  fontWeight: 600,
+                }}>
+                  {acct.role}
                 </span>
               </button>
             ))}

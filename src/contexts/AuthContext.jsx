@@ -6,6 +6,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [viewAsRole, setViewAsRole] = useState(null) // Admin "View As" impersonation
 
   useEffect(() => {
     const savedToken = localStorage.getItem('auth_token')
@@ -36,6 +37,7 @@ export function AuthProvider({ children }) {
     const data = await res.json()
     setToken(data.access_token)
     setUser(data.user)
+    setViewAsRole(null)
     localStorage.setItem('auth_token', data.access_token)
     localStorage.setItem('auth_user', JSON.stringify(data.user))
     return data.user
@@ -44,16 +46,27 @@ export function AuthProvider({ children }) {
   const logout = () => {
     setToken(null)
     setUser(null)
+    setViewAsRole(null)
     localStorage.removeItem('auth_token')
     localStorage.removeItem('auth_user')
   }
 
-  const hasRole = (...roles) => user && roles.includes(user.role)
+  // The "effective" role — either the impersonated role or the real role
+  const effectiveRole = viewAsRole || user?.role
 
-  const isAdmin = () => hasRole('admin')
+  const hasRole = (...roles) => user && roles.includes(effectiveRole)
+
+  const isAdmin = () => user?.role === 'admin' // Always check REAL role for admin features
   const isInvestigator = () => hasRole('admin', 'investigator')
-  const canAccessSettings = () => hasRole('admin')
+  const canAccessSettings = () => user?.role === 'admin' && !viewAsRole // Hide in view-as mode too
   const canAccessInvestigation = () => hasRole('admin', 'investigator')
+
+  const startViewAs = (role) => {
+    if (user?.role !== 'admin') return
+    setViewAsRole(role === user.role ? null : role)
+  }
+
+  const stopViewAs = () => setViewAsRole(null)
 
   return (
     <AuthContext.Provider value={{
@@ -67,6 +80,10 @@ export function AuthProvider({ children }) {
       isInvestigator,
       canAccessSettings,
       canAccessInvestigation,
+      effectiveRole,
+      viewAsRole,
+      startViewAs,
+      stopViewAs,
     }}>
       {children}
     </AuthContext.Provider>

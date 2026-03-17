@@ -46,23 +46,42 @@ class UserInfo(BaseModel):
     display_name: str
 
 
-# --- Demo Users (pre-seeded) ---
+# --- Team Users ---
 
 DEMO_USERS = {
+    # Admins
+    "vandana": {
+        "password_hash": pwd_context.hash("admin123"),
+        "role": UserRole.ADMIN,
+        "display_name": "Vandana",
+    },
+    "james": {
+        "password_hash": pwd_context.hash("admin123"),
+        "role": UserRole.ADMIN,
+        "display_name": "James",
+    },
+    # Investigators
+    "prasanjit": {
+        "password_hash": pwd_context.hash("invest123"),
+        "role": UserRole.INVESTIGATOR,
+        "display_name": "Prasanjit",
+    },
+    "rajashekar": {
+        "password_hash": pwd_context.hash("invest123"),
+        "role": UserRole.INVESTIGATOR,
+        "display_name": "Rajashekar",
+    },
+    # Viewer
+    "kc": {
+        "password_hash": pwd_context.hash("viewer123"),
+        "role": UserRole.VIEWER,
+        "display_name": "KC",
+    },
+    # Generic demo fallback
     "admin": {
         "password_hash": pwd_context.hash("admin123"),
         "role": UserRole.ADMIN,
-        "display_name": "Admin User",
-    },
-    "investigator": {
-        "password_hash": pwd_context.hash("invest123"),
-        "role": UserRole.INVESTIGATOR,
-        "display_name": "Jane Investigator",
-    },
-    "viewer": {
-        "password_hash": pwd_context.hash("viewer123"),
-        "role": UserRole.VIEWER,
-        "display_name": "Read-Only Viewer",
+        "display_name": "Demo Admin",
     },
 }
 
