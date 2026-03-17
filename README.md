@@ -47,6 +47,7 @@
 - [Data Sources & Rationale](#data-sources--rationale)
 - [API Reference](#api-reference)
 - [Responsible AI & Fairness](#responsible-ai--fairness)
+- [AI Governance & Auditability](#ai-governance--auditability)
 - [Demo Walkthrough](#demo-walkthrough-5-minutes)
 - [Demo Recordings](#demo-recordings)
 - [Quick Start](#quick-start)
@@ -627,6 +628,52 @@ Sky Sentinel is designed with responsible AI principles embedded at every level:
 ### Privacy
 - No PHI or PII is processed — all beneficiary data is synthetic
 - API keys are stored in browser localStorage and sent via headers, never logged server-side
+
+---
+
+## AI Governance & Auditability
+
+Systems supporting CMS must balance fraud detection, fairness to providers, and auditability of the investigative process. Sky Sentinel is designed to satisfy three core governance questions:
+
+### 1. What documented criteria determine when an alert is generated?
+
+Every alert is based on **clearly defined, reviewable, and adjustable criteria** — never opaque model behavior:
+
+| Criterion | How It's Documented | Where to See It |
+|---|---|---|
+| **Billing anomaly types** | 6 named scoring factors: Billing Volume vs. Peers, Growth Rate, HCPCS Concentration, Geographic Spread, New Supplier Weight, Cluster Association | Supplier Detail → Risk Factor Breakdown |
+| **Threshold levels** | Each factor's sensitivity is controlled by a named slider (0–100 scale). Default weights are documented in `anomaly_detection.py` | Investigation Controls page |
+| **Peer comparison method** | Z-score analysis against state-level peer groups — deviation measured in standard deviations from the peer mean | AI/ML Pipeline → Layer 1: Statistical Anomaly Detection |
+| **Combined score formula** | Weighted composite of Isolation Forest anomaly score, Z-score deviation, DBSCAN cluster membership, and LLM confidence | Composite Risk Scoring section (README) |
+
+**Audit trail:** All threshold adjustments, pattern definitions, and investigator actions are logged with timestamps.
+
+### 2. What evidence is available to support each alert?
+
+When a provider is flagged, investigators can review **multiple layers of evidence** before taking any action:
+
+| Evidence Type | Description | Location |
+|---|---|---|
+| **Triggering claims** | Individual claims with HCPCS codes, billing amounts, dates, and status badges | Supplier Detail → Recent Claims Table |
+| **Peer comparisons** | Side-by-side metrics vs. same-state, same-specialty peers | Supplier Detail → Risk Factor bars show peer-relative deviation |
+| **Historical billing** | 4-quarter billing timeline showing volume and dollar trends | Supplier Detail → Billing Timeline chart |
+| **AI narrative** | LLM-generated explanation citing specific codes, dollar amounts, enrollment timing, and cluster associations | Supplier Detail → AI Risk Assessment |
+| **Cluster context** | Whether the supplier belongs to a behaviorally coordinated group | Cluster Detection page → Network Graph |
+| **Evidence tags** | Short-form anomaly summaries (e.g., "Explosive claims growth: 100th percentile vs. peer group") | Alert Rankings → Evidence tags per supplier |
+
+### 3. What safeguards exist to prevent or correct false positives?
+
+Healthcare delivery varies widely — unusual billing may reflect specialty practice, not fraud. Sky Sentinel includes multiple safeguards:
+
+| Safeguard | How It Works |
+|---|---|
+| **Peer-group comparisons** | Z-scores are calculated within specialty and geography, so a high-billing supplier in a high-billing state isn't unfairly penalized |
+| **Historical baselines** | Billing timelines show 4 quarters of historical context — a spike may be seasonal, not suspicious |
+| **Multi-method consensus** | A supplier must score high across *multiple* detection methods (Isolation Forest + Z-score + DBSCAN) to receive a critical rating — a single outlier metric alone won't trigger a top-level alert |
+| **Human review gates** | No automated enforcement: every alert requires an investigator to choose **Escalate**, **Monitor**, or **Dismiss** before any action is taken |
+| **Dismiss workflow** | Investigators can mark alerts as false positives with a logged dismissal reason, preventing re-escalation |
+| **Adjustable sensitivity** | 7-dimension threshold sliders let investigators reduce sensitivity on factors that may produce false positives in their specific investigation context |
+| **Geographic fairness monitoring** | The Fairness & Bias Review panel tracks alert distributions across states, surfacing any disproportionate regional concentration |
 
 ---
 
