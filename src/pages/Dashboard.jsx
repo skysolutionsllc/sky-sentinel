@@ -210,19 +210,25 @@ function StateRiskTooltip({ active, payload, label }) {
 // ─── Hover tooltip component for inline table cells ───
 function CellTooltip({ children, text }) {
   const [show, setShow] = useState(false)
+  const [pos, setPos] = useState({ x: 0, y: 0 })
+  const handleMouse = (e) => {
+    setPos({ x: e.clientX, y: e.clientY })
+    setShow(true)
+  }
   return (
     <span
-      style={{ position: 'relative', cursor: 'help', zIndex: show ? 9999 : 'auto' }}
-      onMouseEnter={() => setShow(true)}
+      style={{ cursor: 'help' }}
+      onMouseEnter={handleMouse}
+      onMouseMove={(e) => setPos({ x: e.clientX, y: e.clientY })}
       onMouseLeave={() => setShow(false)}
     >
       {children}
       {show && (
         <span style={{
-          position: 'absolute',
-          bottom: '120%',
-          left: '50%',
-          transform: 'translateX(-50%)',
+          position: 'fixed',
+          top: pos.y - 10,
+          left: pos.x,
+          transform: 'translate(-50%, -100%)',
           background: 'rgba(10,20,40,0.96)',
           border: '1px solid rgba(33,150,243,0.25)',
           borderRadius: 8,
@@ -230,8 +236,8 @@ function CellTooltip({ children, text }) {
           fontSize: 12,
           color: '#e2e8f0',
           whiteSpace: 'pre-line',
-          zIndex: 9999,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+          zIndex: 99999,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
           pointerEvents: 'none',
           maxWidth: 280,
           lineHeight: 1.4,
