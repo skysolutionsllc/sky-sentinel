@@ -212,7 +212,7 @@ function CellTooltip({ children, text }) {
   const [show, setShow] = useState(false)
   return (
     <span
-      style={{ position: 'relative', cursor: 'help' }}
+      style={{ position: 'relative', cursor: 'help', zIndex: show ? 9999 : 'auto' }}
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
     >
@@ -229,8 +229,8 @@ function CellTooltip({ children, text }) {
           padding: '8px 12px',
           fontSize: 12,
           color: '#e2e8f0',
-          whiteSpace: 'nowrap',
-          zIndex: 100,
+          whiteSpace: 'pre-line',
+          zIndex: 9999,
           boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
           pointerEvents: 'none',
           maxWidth: 280,
