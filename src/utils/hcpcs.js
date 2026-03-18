@@ -82,3 +82,39 @@ export function downloadCSV(rows, columns, filename = 'export.csv') {
   link.click()
   URL.revokeObjectURL(url)
 }
+
+/**
+ * US state abbreviation → full name lookup.
+ */
+export const US_STATES = {
+  AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',
+  CT:'Connecticut',DE:'Delaware',DC:'District of Columbia',FL:'Florida',GA:'Georgia',
+  HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',
+  LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',
+  MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',
+  NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',
+  OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',PR:'Puerto Rico',RI:'Rhode Island',
+  SC:'South Carolina',SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',
+  VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',
+}
+
+/**
+ * Risk level descriptions for tooltips.
+ */
+export const RISK_DESCRIPTIONS = {
+  critical: 'Immediate investigation recommended — billing anomalies exceed 3σ from peer baseline',
+  high: 'Elevated risk — multiple anomaly indicators present, prioritize for review',
+  medium: 'Moderate risk — some deviation from peer norms detected, monitor closely',
+  low: 'Within normal parameters — no significant anomalies detected',
+}
+
+/**
+ * Claim status descriptions.
+ */
+export const STATUS_INFO = {
+  clean: { label: 'Clean', desc: 'Claim passed all anomaly checks — no fraud indicators detected' },
+  flagged: { label: 'Flagged', desc: 'Anomaly detected — claim exhibits suspicious billing patterns' },
+  processing: { label: 'Processing', desc: 'Claim is being analyzed by the ML pipeline' },
+  pending: { label: 'Pending', desc: 'Awaiting investigator review' },
+}
+

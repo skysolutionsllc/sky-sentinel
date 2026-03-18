@@ -97,22 +97,61 @@ function USHeatmap({ geoRisk = [] }) {
           position: 'absolute',
           top: 8,
           right: 8,
-          background: 'rgba(15, 40, 71, 0.95)',
-          border: '1px solid rgba(33, 150, 243, 0.3)',
+          background: 'rgba(10, 20, 40, 0.96)',
+          border: '1px solid rgba(33, 150, 243, 0.25)',
           borderRadius: 10,
-          padding: '12px 16px',
+          padding: '14px 18px',
           fontSize: 13,
           color: '#F1F5F9',
-          backdropFilter: 'blur(8px)',
-          minWidth: 160,
+          backdropFilter: 'blur(12px)',
+          minWidth: 200,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
         }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>{tooltip.name} ({tooltip.abbr})</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div>Avg Risk: <span style={{ fontWeight: 600, color: getRiskColor(tooltip.avgRisk) }}>
-              {tooltip.avgRisk > 0 ? tooltip.avgRisk.toFixed(1) : 'N/A'}
-            </span></div>
-            <div>Alerts: <span style={{ fontWeight: 600 }}>{tooltip.alerts}</span></div>
-            <div>Suppliers: <span style={{ fontWeight: 600 }}>{tooltip.suppliers}</span></div>
+          <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 14 }}>{tooltip.name}</div>
+          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 10 }}>{tooltip.abbr}</div>
+          {/* Risk score bar */}
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 11, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Risk Score</span>
+              <span style={{ fontWeight: 700, color: getRiskColor(tooltip.avgRisk) }}>
+                {tooltip.avgRisk > 0 ? tooltip.avgRisk.toFixed(1) : 'N/A'}
+              </span>
+            </div>
+            {tooltip.avgRisk > 0 && (
+              <div style={{ height: 4, background: 'rgba(33,150,243,0.1)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${Math.min(tooltip.avgRisk, 100)}%`,
+                  background: getRiskColor(tooltip.avgRisk),
+                  borderRadius: 2,
+                  transition: 'width 0.3s ease',
+                }} />
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#94A3B8', fontSize: 12 }}>Risk Level</span>
+              <span style={{ fontWeight: 600, fontSize: 12, color: getRiskColor(tooltip.avgRisk) }}>
+                {tooltip.avgRisk >= 70 ? 'Critical' : tooltip.avgRisk >= 55 ? 'High' : tooltip.avgRisk >= 40 ? 'Medium' : tooltip.avgRisk > 0 ? 'Low' : '—'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#94A3B8', fontSize: 12 }}>Alerts</span>
+              <span style={{ fontWeight: 600, fontSize: 12 }}>{tooltip.alerts}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#94A3B8', fontSize: 12 }}>Suppliers</span>
+              <span style={{ fontWeight: 600, fontSize: 12 }}>{tooltip.suppliers}</span>
+            </div>
+            {tooltip.suppliers > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#94A3B8', fontSize: 12 }}>Flag Rate</span>
+                <span style={{ fontWeight: 700, fontSize: 12, color: '#F59E0B' }}>
+                  {((tooltip.alerts / tooltip.suppliers) * 100).toFixed(1)}%
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}

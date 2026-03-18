@@ -3,16 +3,16 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
 } from 'recharts'
-import { 
+import {
   Shield, TrendingUp, Target, Building2, Activity,
   CheckCircle2, XCircle, Hourglass, PauseCircle,
-  AlertTriangle, Map
+  AlertTriangle, Map, Info
 } from 'lucide-react'
 import USHeatmap from '../components/charts/USHeatmap'
 import FairnessPanel from '../components/charts/FairnessPanel'
-import { getEquipmentName } from '../utils/hcpcs'
+import { getEquipmentName, formatHCPCS, HCPCS_NAMES, US_STATES, RISK_DESCRIPTIONS, STATUS_INFO } from '../utils/hcpcs'
 
 // --- Custom AI Icons ---
 const CoreAiIcon = ({ size, color }) => (
@@ -63,6 +63,186 @@ const FairnessIcon = ({ size, color }) => (
 
 const RISK_COLORS = { critical: '#EF4444', high: '#F59E0B', medium: '#3B82F6', low: '#10B981' }
 
+// ─── Reusable tooltip wrapper style ───
+const ttStyle = {
+  background: 'rgba(10,20,40,0.96)',
+  border: '1px solid rgba(33,150,243,0.25)',
+  borderRadius: 10,
+  padding: '12px 16px',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+  backdropFilter: 'blur(12px)',
+  maxWidth: 300,
+}
+const ttLabel = { color: '#94A3B8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }
+const ttValue = { color: '#F1F5F9', fontSize: 14, fontWeight: 600 }
+const ttDivider = { height: 1, background: 'rgba(33,150,243,0.12)', margin: '8px 0' }
+
+// ─── Custom Tooltips for each chart type ───
+
+function ClaimsTrendTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  const total = payload.find(p => p.dataKey === 'total_claims')?.value || 0
+  const flagged = payload.find(p => p.dataKey === 'flagged_count')?.value || 0
+  const rate = total > 0 ? ((flagged / total) * 100).toFixed(1) : '0.0'
+  return (
+    <div style={ttStyle}>
+      <div style={{ ...ttValue, fontSize: 13, marginBottom: 8 }}>{label}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
+          <span style={{ ...ttLabel, marginBottom: 0 }}>Total Claims</span>
+          <span style={{ color: '#60A5FA', fontWeight: 600, fontSize: 13 }}>{total.toLocaleString()}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
+          <span style={{ ...ttLabel, marginBottom: 0 }}>Flagged</span>
+          <span style={{ color: '#EF4444', fontWeight: 600, fontSize: 13 }}>{flagged.toLocaleString()}</span>
+        </div>
+        <div style={ttDivider} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
+          <span style={{ ...ttLabel, marginBottom: 0 }}>Flag Rate</span>
+          <span style={{ color: parseFloat(rate) > 50 ? '#EF4444' : '#F59E0B', fontWeight: 700, fontSize: 13 }}>{rate}%</span>
+        </div>
+      </div>
+      <div style={{ fontSize: 10, color: '#475569', marginTop: 8, lineHeight: 1.4 }}>
+        Claims flagged by the ensemble AI pipeline (Isolation Forest + Z-Score + DBSCAN)
+      </div>
+    </div>
+  )
+}
+
+function RiskPieTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const d = payload[0]
+  const name = d.name?.toLowerCase()
+  return (
+    <div style={ttStyle}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <span style={{ width: 10, height: 10, borderRadius: '50%', background: d.payload?.color || d.color, display: 'inline-block' }} />
+        <span style={{ ...ttValue, fontSize: 15 }}>{d.name}</span>
+        <span style={{ color: '#64748b', fontSize: 12, marginLeft: 'auto' }}>{d.value} suppliers</span>
+      </div>
+      <div style={ttDivider} />
+      <div style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.5 }}>
+        {RISK_DESCRIPTIONS[name] || 'Risk level assessment based on composite scoring'}
+      </div>
+    </div>
+  )
+}
+
+function HCPCSTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  const data = payload[0]?.payload
+  const code = data?.code || label
+  const name = HCPCS_NAMES[code] || data?.description || 'Unknown Equipment'
+  const total = data?.total_billed || 0
+  const count = data?.claim_count || data?.count || 0
+  const avg = count > 0 ? total / count : 0
+  return (
+    <div style={ttStyle}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+        <span style={{ ...ttValue, fontSize: 14 }}>{code}</span>
+        <span style={{ color: '#60A5FA', fontSize: 12 }}>{name}</span>
+      </div>
+      <div style={ttDivider} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ ...ttLabel, marginBottom: 0 }}>Total Billed</span>
+          <span style={{ color: '#F1F5F9', fontWeight: 600, fontSize: 13 }}>${total.toLocaleString()}</span>
+        </div>
+        {count > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ ...ttLabel, marginBottom: 0 }}>Claims</span>
+            <span style={{ color: '#F1F5F9', fontWeight: 600, fontSize: 13 }}>{count.toLocaleString()}</span>
+          </div>
+        )}
+        {avg > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ ...ttLabel, marginBottom: 0 }}>Avg per Claim</span>
+            <span style={{ color: '#F59E0B', fontWeight: 600, fontSize: 13 }}>${avg.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+          </div>
+        )}
+      </div>
+      <div style={{ fontSize: 10, color: '#475569', marginTop: 8, lineHeight: 1.4 }}>
+        HCPCS = Healthcare Common Procedure Coding System — standardized codes for DME billing
+      </div>
+    </div>
+  )
+}
+
+function StateRiskTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  const data = payload[0]?.payload
+  const fullName = US_STATES[label] || label
+  const avgRisk = data?.avg_risk || 0
+  const alerts = data?.alert_count || 0
+  const suppliers = data?.supplier_count || 0
+  const flagRate = suppliers > 0 ? ((alerts / suppliers) * 100).toFixed(1) : '0.0'
+  const riskLevel = avgRisk >= 70 ? 'critical' : avgRisk >= 55 ? 'high' : avgRisk >= 40 ? 'medium' : 'low'
+
+  return (
+    <div style={ttStyle}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+        <span style={{ ...ttValue, fontSize: 15 }}>{fullName}</span>
+        <span style={{ color: '#64748b', fontSize: 12 }}>({label})</span>
+      </div>
+      <div style={ttDivider} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ ...ttLabel, marginBottom: 0 }}>Avg Risk Score</span>
+          <span style={{ color: RISK_COLORS[riskLevel], fontWeight: 700, fontSize: 14 }}>{avgRisk.toFixed(1)}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ ...ttLabel, marginBottom: 0 }}>Active Alerts</span>
+          <span style={{ color: '#EF4444', fontWeight: 600, fontSize: 13 }}>{alerts}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ ...ttLabel, marginBottom: 0 }}>Total Suppliers</span>
+          <span style={{ color: '#F1F5F9', fontWeight: 600, fontSize: 13 }}>{suppliers}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ ...ttLabel, marginBottom: 0 }}>Flag Rate</span>
+          <span style={{ color: parseFloat(flagRate) > 50 ? '#EF4444' : '#F59E0B', fontWeight: 700, fontSize: 13 }}>{flagRate}%</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Hover tooltip component for inline table cells ───
+function CellTooltip({ children, text }) {
+  const [show, setShow] = useState(false)
+  return (
+    <span
+      style={{ position: 'relative', cursor: 'help' }}
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      {children}
+      {show && (
+        <span style={{
+          position: 'absolute',
+          bottom: '120%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(10,20,40,0.96)',
+          border: '1px solid rgba(33,150,243,0.25)',
+          borderRadius: 8,
+          padding: '8px 12px',
+          fontSize: 12,
+          color: '#e2e8f0',
+          whiteSpace: 'nowrap',
+          zIndex: 100,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+          pointerEvents: 'none',
+          maxWidth: 280,
+          lineHeight: 1.4,
+        }}>
+          {text}
+        </span>
+      )}
+    </span>
+  )
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState(null)
   const [alerts, setAlerts] = useState([])
@@ -93,6 +273,7 @@ export default function Dashboard() {
   if (!stats) return <div className="loading-container"><div className="spinner" /></div>
 
   const rd = stats.risk_distribution || {}
+  const totalRisk = (rd.critical || 0) + (rd.high || 0) + (rd.medium || 0) + (rd.low || 0)
   const pieData = [
     { name: 'Critical', value: rd.critical || 0, color: RISK_COLORS.critical },
     { name: 'High', value: rd.high || 0, color: RISK_COLORS.high },
@@ -144,44 +325,36 @@ export default function Dashboard() {
         background: 'linear-gradient(135deg, rgba(33,150,243,0.08) 0%, rgba(16,185,129,0.06) 100%)',
         border: '1px solid rgba(33,150,243,0.2)',
         padding: '24px 32px',
-        marginBottom: '24px' // Added spacing class/style
+        marginBottom: '24px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 /* Increased bottom margin */ }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
           <CoreAiIcon size={24} color="#2196F3" />
           <span style={{ fontSize: 16, fontWeight: 600, color: '#F1F5F9' }}>Why Sky Sentinel Goes Beyond Traditional Fraud Detection</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <div style={{ marginTop: 2, flexShrink: 0 }}>
-              <MultiMethodIcon size={20} color="#F59E0B" />
-            </div>
+            <div style={{ marginTop: 2, flexShrink: 0 }}><MultiMethodIcon size={20} color="#F59E0B" /></div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#CBD5E1', marginBottom: 4 }}>Ensemble AI</div>
               <div style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.4 }}>Isolation Forest + Z-Score + DBSCAN + LLM — multi-model ensemble</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <div style={{ marginTop: 2, flexShrink: 0 }}>
-              <LlmIcon size={20} color="#10B981" />
-            </div>
+            <div style={{ marginTop: 2, flexShrink: 0 }}><LlmIcon size={20} color="#10B981" /></div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#CBD5E1', marginBottom: 4 }}>LLM Reasoning</div>
               <div style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.4 }}>Decoder LLM explains <em>why</em> — encoder classifies at speed</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <div style={{ marginTop: 2, flexShrink: 0 }}>
-              <HitlIcon size={20} color="#8B5CF6" />
-            </div>
+            <div style={{ marginTop: 2, flexShrink: 0 }}><HitlIcon size={20} color="#8B5CF6" /></div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#CBD5E1', marginBottom: 4 }}>Human-in-the-Loop</div>
               <div style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.4 }}>Investigators tune weights and test hypotheses</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <div style={{ marginTop: 2, flexShrink: 0 }}>
-              <FairnessIcon size={20} color="#EC4899" />
-            </div>
+            <div style={{ marginTop: 2, flexShrink: 0 }}><FairnessIcon size={20} color="#EC4899" /></div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#CBD5E1', marginBottom: 4 }}>Fairness Built-In</div>
               <div style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.4 }}>Algorithmic bias monitoring across geographies</div>
@@ -191,7 +364,7 @@ export default function Dashboard() {
       </div>
 
       <div className="dashboard-grid">
-        {/* Geographic Risk Heatmap — moved up for demo visibility */}
+        {/* Geographic Risk Heatmap */}
         <div className="glass-card full-width slide-up">
           <div className="chart-header">
             <div>
@@ -199,19 +372,18 @@ export default function Dashboard() {
                 <Map size={18} />
                 Provider Risk Heatmap
               </div>
-              <div className="chart-subtitle">Geographic risk concentration across US states</div>
+              <div className="chart-subtitle">Geographic risk concentration across US states — hover any state for detailed breakdown</div>
             </div>
           </div>
           <USHeatmap geoRisk={geoRisk} />
         </div>
 
-        {/* Fairness & Bias Review — moved up */}
+        {/* Fairness & Bias Review */}
         <div className="full-width">
           <FairnessPanel geoRisk={geoRisk} />
         </div>
 
-        {/* Charts Row */}
-        {/* Claims Trend */}
+        {/* ── Claims Trend ── */}
         <div className="glass-card slide-up stagger-2">
           <div className="chart-header">
             <div>
@@ -219,7 +391,7 @@ export default function Dashboard() {
                 <TrendingUp size={18} />
                 Claims Trend
               </div>
-              <div className="chart-subtitle">Monthly flagged vs. total claims</div>
+              <div className="chart-subtitle">Monthly flagged vs. total claims — hover for flag rate analysis</div>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={240}>
@@ -237,18 +409,24 @@ export default function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(33,150,243,0.08)" />
               <XAxis dataKey="month" tick={{ fill: '#94A3B8', fontSize: 11 }} />
               <YAxis tick={{ fill: '#94A3B8', fontSize: 11 }} />
-              <Tooltip
-                contentStyle={{ background: '#0F2847', border: '1px solid rgba(33,150,243,0.3)', borderRadius: 8 }}
-                labelStyle={{ color: '#F1F5F9' }}
-                itemStyle={{ color: '#F1F5F9' }}
-              />
+              <Tooltip content={<ClaimsTrendTooltip />} />
               <Area type="monotone" dataKey="total_claims" stroke="#2196F3" fill="url(#gradBlue)" name="Total Claims" />
               <Area type="monotone" dataKey="flagged_count" stroke="#EF4444" fill="url(#gradRed)" name="Flagged" />
             </AreaChart>
           </ResponsiveContainer>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 4, fontSize: 11 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 12, height: 3, borderRadius: 2, background: '#2196F3', display: 'inline-block' }} />
+              <span style={{ color: '#94A3B8' }}>Total Claims</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 12, height: 3, borderRadius: 2, background: '#EF4444', display: 'inline-block' }} />
+              <span style={{ color: '#94A3B8' }}>Flagged by AI</span>
+            </div>
+          </div>
         </div>
 
-        {/* Risk Distribution */}
+        {/* ── Risk Distribution ── */}
         <div className="glass-card slide-up stagger-3">
           <div className="chart-header">
             <div>
@@ -256,7 +434,7 @@ export default function Dashboard() {
                 <Target size={18} />
                 Risk Distribution
               </div>
-              <div className="chart-subtitle">Supplier alert risk levels</div>
+              <div className="chart-subtitle">Supplier alert breakdown by risk level — hover for details</div>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={240}>
@@ -272,24 +450,27 @@ export default function Dashboard() {
                   <Cell key={i} fill={d.color} stroke="none" />
                 ))}
               </Pie>
-              <Tooltip
-                contentStyle={{ background: '#0F2847', border: '1px solid rgba(33,150,243,0.3)', borderRadius: 8 }}
-                labelStyle={{ color: '#F1F5F9' }}
-                itemStyle={{ color: '#F1F5F9' }}
-              />
+              <Tooltip content={<RiskPieTooltip />} />
             </PieChart>
           </ResponsiveContainer>
+          {/* Center label */}
+          <div style={{
+            textAlign: 'center', marginTop: -144, marginBottom: 120, position: 'relative', zIndex: 0, pointerEvents: 'none',
+          }}>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#F1F5F9' }}>{totalRisk}</div>
+            <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total</div>
+          </div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: -8 }}>
             {pieData.map(d => (
               <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: d.color, display: 'inline-block' }} />
-                <span style={{ color: '#94A3B8' }}>{d.name}: {d.value}</span>
+                <span style={{ color: '#94A3B8' }}>{d.name}: {d.value} ({totalRisk > 0 ? ((d.value / totalRisk) * 100).toFixed(0) : 0}%)</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* HCPCS Distribution */}
+        {/* ── HCPCS Distribution ── */}
         <div className="glass-card slide-up stagger-4">
           <div className="chart-header">
             <div>
@@ -297,33 +478,30 @@ export default function Dashboard() {
                 <Building2 size={18} />
                 Top DME Categories
               </div>
-              <div className="chart-subtitle">HCPCS codes by total billed amount</div>
+              <div className="chart-subtitle">HCPCS codes ranked by total billed amount — hover for equipment details</div>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={hcpcs.slice(0, 7)} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(33,150,243,0.08)" />
               <XAxis type="number" tick={{ fill: '#94A3B8', fontSize: 11 }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
-              <YAxis dataKey="code" type="category" tick={{ fill: '#94A3B8', fontSize: 11 }} width={60} />
-              <Tooltip
-                contentStyle={{ background: '#0F2847', border: '1px solid rgba(33,150,243,0.3)', borderRadius: 8 }}
-                labelStyle={{ color: '#F1F5F9' }}
-                itemStyle={{ color: '#F1F5F9' }}
-                formatter={(v, name, props) => [
-                  `$${Number(v).toLocaleString()}`,
-                  props.payload.description || props.payload.code
-                ]}
-                labelFormatter={(label) => {
-                  const item = hcpcs.find(h => h.code === label)
-                  return item?.description ? `${label} — ${item.description}` : label
+              <YAxis
+                dataKey="code"
+                type="category"
+                tick={{ fill: '#94A3B8', fontSize: 10 }}
+                width={100}
+                tickFormatter={(code) => {
+                  const name = HCPCS_NAMES[code]
+                  return name ? `${code} · ${name.length > 12 ? name.slice(0, 12) + '…' : name}` : code
                 }}
               />
+              <Tooltip content={<HCPCSTooltip />} />
               <Bar dataKey="total_billed" fill="#2196F3" radius={[0, 6, 6, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Live Claims Feed */}
+        {/* ── Live Claims Feed ── */}
         <div className="glass-card slide-up stagger-5">
           <div className="chart-header">
             <div>
@@ -331,24 +509,58 @@ export default function Dashboard() {
                 <Activity size={18} />
                 Live Claims Feed
               </div>
-              <div className="chart-subtitle">Real-time claim processing status</div>
+              <div className="chart-subtitle">Real-time claim processing — hover any cell for details</div>
             </div>
             <span className="pulse-glow" style={{
               width: 8, height: 8, borderRadius: '50%', background: '#10B981', display: 'inline-block'
             }} />
           </div>
+          {/* Column headers */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px',
+            marginBottom: 4, fontSize: 10, fontWeight: 700, color: '#64748b',
+            textTransform: 'uppercase', letterSpacing: '0.5px',
+            borderBottom: '1px solid rgba(33,150,243,0.08)',
+          }}>
+            <span style={{ width: 30 }}>
+              <CellTooltip text="Claim processing status: Clean, Flagged, Processing, or Pending">Status</CellTooltip>
+            </span>
+            <span style={{ flex: '0 0 90px' }}>
+              <CellTooltip text="National Provider Identifier — unique 10-digit ID assigned to each Medicare supplier">NPI</CellTooltip>
+            </span>
+            <span style={{ flex: '0 0 70px' }}>
+              <CellTooltip text="HCPCS Code — Healthcare Common Procedure Coding System code identifying the billed equipment">HCPCS</CellTooltip>
+            </span>
+            <span style={{ flex: 1, textAlign: 'right' }}>
+              <CellTooltip text="Dollar amount billed to Medicare for this claim">Amount</CellTooltip>
+            </span>
+            <span style={{ flex: '0 0 80px', textAlign: 'right' }}>
+              <CellTooltip text="Date the DME service was provided to the beneficiary">Date</CellTooltip>
+            </span>
+          </div>
           <div className="claims-feed">
             {claims.map((c, i) => (
               <div key={c.claim_id} className="claim-item" style={{ animationDelay: `${i * 60}ms` }}>
-                <span className={`status-badge ${c.status}`} style={{ padding: '4px' }}>
-                  {c.status === 'clean' ? <CheckCircle2 size={14} /> : 
-                   c.status === 'flagged' ? <XCircle size={14} /> : 
-                   c.status === 'processing' ? <Hourglass size={14} /> : 
-                   <PauseCircle size={14} />}
-                </span>
-                <span className="claim-npi">{c.supplier_npi?.slice(0, 6)}...</span>
-                <span className="claim-hcpcs">{c.hcpcs_code}</span>
-                <span className="claim-amount">${Number(c.billed_amount).toLocaleString()}</span>
+                <CellTooltip text={STATUS_INFO[c.status]?.desc || 'Unknown status'}>
+                  <span className={`status-badge ${c.status}`} style={{ padding: '4px' }}>
+                    {c.status === 'clean' ? <CheckCircle2 size={14} /> :
+                     c.status === 'flagged' ? <XCircle size={14} /> :
+                     c.status === 'processing' ? <Hourglass size={14} /> :
+                     <PauseCircle size={14} />}
+                  </span>
+                </CellTooltip>
+                <CellTooltip text={`NPI: ${c.supplier_npi || 'N/A'}\nNational Provider Identifier — click supplier page for full details`}>
+                  <span className="claim-npi" style={{ cursor: 'pointer' }}
+                        onClick={() => navigate(`/supplier/${c.supplier_npi}`)}>
+                    {c.supplier_npi || '—'}
+                  </span>
+                </CellTooltip>
+                <CellTooltip text={formatHCPCS(c.hcpcs_code)}>
+                  <span className="claim-hcpcs">{c.hcpcs_code}</span>
+                </CellTooltip>
+                <CellTooltip text={`Billed: $${Number(c.billed_amount).toLocaleString()}\nAmount billed to Medicare for this DME item`}>
+                  <span className="claim-amount">${Number(c.billed_amount).toLocaleString()}</span>
+                </CellTooltip>
                 <span className="claim-time">
                   {c.service_date ? new Date(c.service_date).toLocaleDateString() : ''}
                 </span>
@@ -357,7 +569,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Top Alerts */}
+        {/* ── Top Alerts ── */}
         <div className="glass-card full-width slide-up stagger-5">
           <div className="chart-header">
             <div>
@@ -365,7 +577,7 @@ export default function Dashboard() {
                 <AlertTriangle size={18} className="text-risk-critical" />
                 Top Risk Alerts
               </div>
-              <div className="chart-subtitle">Highest-risk suppliers requiring investigation</div>
+              <div className="chart-subtitle">Highest-risk suppliers — click any alert for full investigation view</div>
             </div>
             <button className="btn-secondary" onClick={() => navigate('/alerts')}>View All →</button>
           </div>
@@ -375,24 +587,29 @@ export default function Dashboard() {
                 key={a.id}
                 className="alert-card"
                 onClick={() => navigate(`/supplier/${a.supplier_npi}`)}
+                title={`Risk Score: ${Math.round(a.risk_score)}/100 — ${RISK_DESCRIPTIONS[a.risk_level] || 'Click for details'}`}
               >
-                <div className={`alert-score ${a.risk_level}`}>
-                  {Math.round(a.risk_score)}
-                </div>
+                <CellTooltip text={`Composite Risk Score: ${Math.round(a.risk_score)}/100\n${RISK_DESCRIPTIONS[a.risk_level] || 'Multi-factor ensemble score'}\n\nClick to view full supplier investigation`}>
+                  <div className={`alert-score ${a.risk_level}`}>
+                    {Math.round(a.risk_score)}
+                  </div>
+                </CellTooltip>
                 <div className="alert-info">
                   <div className="alert-title">{a.supplier_name}</div>
                   <div className="alert-summary">{a.summary}</div>
                 </div>
                 <div className="alert-meta">
                   <span className={`risk-badge ${a.risk_level}`}>{a.risk_level}</span>
-                  <span style={{ fontSize: 12, color: 'var(--sky-text-muted)' }}>{a.supplier_state}</span>
+                  <CellTooltip text={US_STATES[a.supplier_state] || a.supplier_state}>
+                    <span style={{ fontSize: 12, color: 'var(--sky-text-muted)' }}>{a.supplier_state}</span>
+                  </CellTooltip>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Geographic Risk Bar Chart — detailed breakdown */}
+        {/* ── State Risk Rankings ── */}
         <div className="glass-card full-width slide-up">
           <div className="chart-header">
             <div>
@@ -400,7 +617,7 @@ export default function Dashboard() {
                 <AlertTriangle size={18} />
                 State Risk Rankings
               </div>
-              <div className="chart-subtitle">States with highest average risk scores and alert concentrations</div>
+              <div className="chart-subtitle">States ranked by average risk score and alert count — hover for full breakdown</div>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={200}>
@@ -408,15 +625,21 @@ export default function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(33,150,243,0.08)" />
               <XAxis dataKey="state" tick={{ fill: '#94A3B8', fontSize: 11 }} />
               <YAxis tick={{ fill: '#94A3B8', fontSize: 11 }} />
-              <Tooltip
-                contentStyle={{ background: '#0F2847', border: '1px solid rgba(33,150,243,0.3)', borderRadius: 8 }}
-                labelStyle={{ color: '#F1F5F9' }}
-                itemStyle={{ color: '#F1F5F9' }}
-              />
+              <Tooltip content={<StateRiskTooltip />} />
               <Bar dataKey="avg_risk" name="Avg Risk Score" fill="#F59E0B" radius={[6, 6, 0, 0]} />
               <Bar dataKey="alert_count" name="Alert Count" fill="#2196F3" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 8, fontSize: 11 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: '#F59E0B', display: 'inline-block' }} />
+              <span style={{ color: '#94A3B8' }}>Avg Risk Score (0-100)</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: '#2196F3', display: 'inline-block' }} />
+              <span style={{ color: '#94A3B8' }}>Active Alert Count</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
