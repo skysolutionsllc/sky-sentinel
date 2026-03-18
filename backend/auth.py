@@ -57,36 +57,36 @@ class UserInfo(BaseModel):
 
 DEMO_USERS = {
     # Admins
-    "vandana": {
-        "password_hash": hash_password("admin123"),
+    "vtanu@skysolutions.com": {
+        "password_hash": hash_password("sky123"),
         "role": UserRole.ADMIN,
         "display_name": "Vandana Tanu",
     },
-    "james": {
-        "password_hash": hash_password("admin123"),
+    "james@skysolutions.com": {
+        "password_hash": hash_password("sky123"),
         "role": UserRole.ADMIN,
         "display_name": "James Galang",
     },
     # Investigators
-    "prasanjit": {
-        "password_hash": hash_password("invest123"),
+    "pdeka@skysolutions.com": {
+        "password_hash": hash_password("sky123"),
         "role": UserRole.INVESTIGATOR,
         "display_name": "Prasanjit Deka",
     },
-    "rajashekar": {
-        "password_hash": hash_password("invest123"),
+    "rsabbani@skysolutions.com": {
+        "password_hash": hash_password("sky123"),
         "role": UserRole.INVESTIGATOR,
         "display_name": "Rajashekar Sabbani",
     },
     # Viewer
-    "kc": {
-        "password_hash": hash_password("viewer123"),
+    "kjuvvadi@skysolutions.com": {
+        "password_hash": hash_password("sky123"),
         "role": UserRole.VIEWER,
         "display_name": "KC Juvvadi",
     },
     # Generic demo fallback
     "admin": {
-        "password_hash": hash_password("admin123"),
+        "password_hash": hash_password("sky123"),
         "role": UserRole.ADMIN,
         "display_name": "Demo Admin",
     },

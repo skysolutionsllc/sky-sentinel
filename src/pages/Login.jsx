@@ -73,14 +73,14 @@ export default function Login() {
 
             <form onSubmit={handleSubmit} className="login-form">
               <div className="login-field">
-                <label htmlFor="login-user">Username</label>
+                <label htmlFor="login-user">Email</label>
                 <input
                   id="login-user"
-                  type="text"
+                  type="email"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your username"
-                  autoComplete="username"
+                  placeholder="you@skysolutions.com"
+                  autoComplete="email"
                   autoFocus
                 />
               </div>
