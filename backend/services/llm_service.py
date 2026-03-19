@@ -131,18 +131,30 @@ class OpenAIProvider(BaseLLMProvider):
         self.model = model_name or LLM_MODEL or "gpt-4.1"
 
     def _call(self, system: str, prompt: str, max_tokens: int = 1500) -> str:
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                max_tokens=max_tokens,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            return f"[OpenAI LLM analysis unavailable: {str(e)[:100]}]"
+        messages = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt}
+        ]
+        # Try max_completion_tokens first (required by o1, o3, gpt-4.1+),
+        # then fall back to max_tokens, then no limit at all.
+        for kwargs in [
+            {"max_completion_tokens": max_tokens},
+            {"max_tokens": max_tokens},
+            {},
+        ]:
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    **kwargs,
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                err = str(e)
+                if "max_tokens" in err or "max_completion_tokens" in err or "Unsupported parameter" in err:
+                    continue  # try next parameter variant
+                return f"[OpenAI LLM analysis unavailable: {err[:100]}]"
+        return "[OpenAI LLM analysis unavailable: could not determine supported token parameter]"
 
     def analyze_supplier(self, supplier_data: dict, claims: list, peer_baseline: dict) -> str:
         system = (
