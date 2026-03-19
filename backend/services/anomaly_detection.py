@@ -233,7 +233,7 @@ def _run_cluster_detection(db: Session):
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    dbscan = DBSCAN(eps=1.0, min_samples=3)
+    dbscan = DBSCAN(eps=0.8, min_samples=2)
     labels = dbscan.fit_predict(X_scaled)
 
     # Clear existing clusters
@@ -337,7 +337,7 @@ def _compute_composite_scores(db: Session, isolation_scores: dict, z_scores: dic
         cluster = db.query(SupplierCluster).filter(
             SupplierCluster.supplier_npi == npi
         ).first()
-        cluster_score = 60 if cluster else 10
+        cluster_score = 70 if cluster else 10
 
         # Get latest metrics for growth-based scoring
         m = (
@@ -347,9 +347,9 @@ def _compute_composite_scores(db: Session, isolation_scores: dict, z_scores: dic
             .first()
         )
 
-        growth_score = min(abs(m.growth_rate or 0) * 2.5, 100) if m else 20
+        growth_score = min(abs(m.growth_rate or 0) * 3.0, 100) if m else 20
         geo_score = min((m.geographic_spread or 0) * 100, 100) if m else 15
-        hcpcs_score = min((m.unique_hcpcs or 1) * 8, 100) if m else 20
+        hcpcs_score = min((m.unique_hcpcs or 1) * 12, 100) if m else 20
 
         # Weighted composite
         composite = (
