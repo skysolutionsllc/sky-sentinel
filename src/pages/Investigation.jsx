@@ -51,6 +51,15 @@ const PRESETS = {
     cluster_association_weight: 30,
     risk_threshold: 55,
   },
+  'Shell Company Ring (Gold Rush)': {
+    billing_volume_weight: 15,
+    growth_rate_weight: 25,
+    hcpcs_mix_weight: 10,
+    geographic_spread_weight: 25,
+    llm_context_weight: 10,
+    cluster_association_weight: 15,
+    risk_threshold: 40,
+  },
 }
 
 const WEIGHT_LABELS = {

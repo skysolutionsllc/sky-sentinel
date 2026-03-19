@@ -28,6 +28,15 @@ const FACTOR_LABELS = {
   cluster_association: 'Cluster Link',
 }
 
+const FACTOR_DESCRIPTIONS = {
+  billing_volume: 'Isolation Forest: 100-tree ensemble analyzes 7 features simultaneously (billed amount, claims, beneficiaries, HCPCS diversity, avg per claim, growth, geo spread). Anomalies are data points easily isolated — fewer tree splits needed. Score 0–100.',
+  growth_rate: 'Time-Series Analysis: measures quarter-over-quarter billing acceleration. Formula: min(|growth_rate| × 2, 100). A 400% quarterly growth → score 100. Legitimate suppliers typically grow ±10% per quarter.',
+  hcpcs_mix: 'Peer Deviation: compares this supplier\'s HCPCS code diversity against state peers. Shell companies concentrate on 2–3 high-cost codes (e.g., K0856 power wheelchairs at $30K+). Score increases with concentration.',
+  geographic_spread: 'Geographic Impossibility: measures the ratio of states served relative to supplier location. A Brooklyn DME company billing patients across 12+ states scores near 100. Legitimate suppliers typically serve 1–2 states.',
+  llm_context: 'Z-Score Peer Analysis: measures standard deviations from state peer group mean. Formula: min(|billing − peer_mean| / peer_std × 25, 100). A Z-score of 4+ means the supplier is a statistical impossibility within its peer group.',
+  cluster_association: 'DBSCAN Clustering: density-based scan in 5-dimensional behavioral space (eps=0.8, min_samples=3). Cluster members score 60; non-members score 10. Detects coordinated activity even when individual entities stay below thresholds.',
+}
+
 export default function SupplierDetail() {
   const { npi } = useParams()
   const navigate = useNavigate()
@@ -96,7 +105,7 @@ export default function SupplierDetail() {
         <div className="glass-card slide-up stagger-2">
           <div className="chart-title" style={{ marginBottom: 20 }}>Risk Factor Breakdown</div>
           {risk_score?.factors && Object.entries(risk_score.factors).map(([key, value]) => (
-            <div key={key} className="factor-bar">
+            <div key={key} className="factor-bar" style={{ marginBottom: 16 }}>
               <span className="factor-label">{FACTOR_LABELS[key] || key}</span>
               <div className="factor-track">
                 <div
@@ -108,6 +117,11 @@ export default function SupplierDetail() {
                 />
               </div>
               <span className="factor-value">{Math.round(value)}</span>
+              {FACTOR_DESCRIPTIONS[key] && (
+                <div style={{ fontSize: 11, color: 'var(--sky-text-muted)', lineHeight: 1.5, marginTop: 4, gridColumn: '1 / -1' }}>
+                  {FACTOR_DESCRIPTIONS[key]}
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -20,7 +20,7 @@ def dashboard_stats(db: Session = Depends(get_db)):
     total_claims = db.query(Claim).count()
     flagged_claims = db.query(Claim).filter(Claim.status == "flagged").count()
     total_suppliers = db.query(Supplier).count()
-    clusters = db.query(func.max(SupplierCluster.cluster_id)).scalar() or 0
+    clusters = db.query(func.count(func.distinct(SupplierCluster.cluster_id))).scalar() or 0
 
     return {
         "total_alerts": total_alerts,

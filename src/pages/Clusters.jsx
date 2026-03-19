@@ -116,7 +116,7 @@ export default function Clusters() {
         </div>
       )}
 
-      {/* Network Visualization Placeholder */}
+      {/* Network Visualization */}
       <div className="glass-card" style={{ marginTop: 24 }}>
         <div className="chart-header">
           <div>
@@ -126,10 +126,11 @@ export default function Clusters() {
             <div className="chart-subtitle">Visual representation of supplier coordination patterns</div>
           </div>
         </div>
-        <div style={{ position: 'relative', height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="100%" height="280" viewBox="0 0 800 280">
+        <div style={{ position: 'relative', height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', overflowX: 'auto' }}>
+          <svg width="100%" height="280" viewBox={`0 0 ${Math.max(800, clusters.length * 180 + 100)} 280`} style={{ minWidth: Math.max(800, clusters.length * 180 + 100) }}>
             {clusters.map((c, ci) => {
-              const cx = 150 + ci * 200
+              const totalWidth = Math.max(800, clusters.length * 180 + 100)
+              const cx = (totalWidth / (clusters.length + 1)) * (ci + 1)
               const cy = 140
               return (
                 <g key={c.cluster_id}>
@@ -158,6 +159,38 @@ export default function Clusters() {
               )
             })}
           </svg>
+        </div>
+      </div>
+
+      {/* How DBSCAN Works */}
+      <div className="glass-card" style={{ marginTop: 24 }}>
+        <div className="chart-header">
+          <div>
+            <div className="chart-title flex-center gap-2">
+              <Network size={18} /> How DBSCAN Cluster Detection Works
+            </div>
+            <div className="chart-subtitle">The algorithm behind coordinated fraud ring discovery</div>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginTop: 8 }}>
+          <div style={{ padding: 16, borderRadius: 10, background: 'rgba(10,22,40,0.5)', border: '1px solid var(--sky-border)' }}>
+            <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--sky-light)', fontSize: 14 }}>1. Feature Space</div>
+            <div style={{ fontSize: 13, color: 'var(--sky-text-secondary)', lineHeight: 1.6 }}>
+              Each supplier is represented as a point in 5-dimensional space: <strong>billing volume</strong>, <strong>claim count</strong>, <strong>growth rate</strong>, <strong>HCPCS diversity</strong>, and <strong>geographic spread</strong>. All features are standardized to zero mean and unit variance.
+            </div>
+          </div>
+          <div style={{ padding: 16, borderRadius: 10, background: 'rgba(10,22,40,0.5)', border: '1px solid var(--sky-border)' }}>
+            <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--sky-light)', fontSize: 14 }}>2. Density Scanning</div>
+            <div style={{ fontSize: 13, color: 'var(--sky-text-secondary)', lineHeight: 1.6 }}>
+              DBSCAN scans each supplier's <strong>ε-neighborhood</strong> (eps=0.8 std devs). If ≥3 suppliers are within this radius, they form a <strong>core cluster</strong>. Unlike K-Means, the number of clusters is discovered automatically — no preset count needed.
+            </div>
+          </div>
+          <div style={{ padding: 16, borderRadius: 10, background: 'rgba(10,22,40,0.5)', border: '1px solid var(--sky-border)' }}>
+            <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--sky-light)', fontSize: 14 }}>3. Why It Catches Fraud Rings</div>
+            <div style={{ fontSize: 13, color: 'var(--sky-text-secondary)', lineHeight: 1.6 }}>
+              Shell companies in a coordinated network share <strong>behavioral fingerprints</strong>: similar billing patterns, same HCPCS focus, correlated growth, and wide geographic reach. DBSCAN groups them <strong>even when no single entity exceeds an individual threshold</strong>.
+            </div>
+          </div>
         </div>
       </div>
     </div>

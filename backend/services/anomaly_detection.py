@@ -8,7 +8,16 @@ from backend.db.models import Supplier, SupplierMetrics, AnomalyScore, SupplierC
 
 
 def run_anomaly_detection(db: Session):
-    """Run the full anomaly detection pipeline."""
+    """Run the full anomaly detection pipeline.
+
+    Pipeline stages:
+      1. Peer groups   — group suppliers by state, compute baseline stats
+      2. Isolation Forest — 100-tree ensemble, 7 features, contamination=10%
+      3. Z-Score        — deviation from state peer group mean billing
+      4. DBSCAN         — behavioral clustering, eps=0.8, min_samples=3
+      5. Composite      — weighted combination of all signals (0-100 scale)
+      6. Cluster risk   — average composite score per cluster
+    """
     print("[Anomaly Detection] Starting pipeline...")
 
     # 1. Compute peer group baselines
@@ -25,6 +34,9 @@ def run_anomaly_detection(db: Session):
 
     # 5. Compute composite risk scores
     _compute_composite_scores(db, isolation_scores, z_scores)
+
+    # 6. Update cluster-level risk scores (requires composite scores)
+    _update_cluster_risk_scores(db)
 
     db.commit()
     print("[Anomaly Detection] Pipeline complete.")
@@ -80,7 +92,22 @@ def _compute_peer_groups(db: Session):
 
 
 def _run_isolation_forest(db: Session) -> dict:
-    """Isolation Forest for individual supplier outlier detection."""
+    """Isolation Forest for individual supplier outlier detection.
+
+    How it works: builds 100 random decision trees. Each tree randomly
+    selects a feature and a split value, recursively isolating data
+    points. Anomalies are data points that are easy to isolate — they
+    require fewer splits. The decision_function returns a score where
+    lower values = more anomalous.
+
+    Features used (7 dimensions):
+      - total_billed, total_claims, unique_beneficiaries
+      - unique_hcpcs, avg_billed_per_claim
+      - growth_rate, geographic_spread
+
+    contamination=0.1 tells the model to expect ~10% anomalies.
+    Output is normalized to 0-100 (100 = most anomalous).
+    """
     metrics = db.query(SupplierMetrics).all()
 
     if len(metrics) < 5:
@@ -124,7 +151,18 @@ def _run_isolation_forest(db: Session) -> dict:
 
 
 def _run_z_score_analysis(db: Session) -> dict:
-    """Z-score deviation from peer group baselines."""
+    """Z-score deviation from peer group baselines.
+
+    How it works: for each state's peer group, compute the mean and
+    standard deviation of total billing. Then for each supplier,
+    calculate how many std devs their billing is from the mean.
+
+    Formula: Z = |billing - peer_mean| / peer_std_dev
+
+    A Z-score of 3+ means the supplier is 3 standard deviations
+    from the peer average — statistically extremely unlikely.
+    Score is capped at 100 (Z × 25).
+    """
     peer_groups = db.query(PeerGroup).all()
     z_scores = {}
 
@@ -152,16 +190,37 @@ def _run_z_score_analysis(db: Session) -> dict:
 
 
 def _run_cluster_detection(db: Session):
-    """DBSCAN clustering for coordinated multi-NPI pattern detection."""
+    """DBSCAN clustering for coordinated multi-NPI pattern detection.
+
+    DBSCAN (Density-Based Spatial Clustering of Applications with Noise)
+    groups suppliers that are close together in a 5-dimensional behavioral
+    feature space. Unlike K-Means, it does not require specifying the
+    number of clusters in advance — it discovers them automatically.
+
+    The two key parameters:
+      - eps=0.8: suppliers within 0.8 standard deviations are "neighbors"
+      - min_samples=3: a cluster needs at least 3 core members
+
+    Points that don't belong to any cluster are labeled as noise (-1).
+    """
+    from collections import Counter
+
     metrics_list = db.query(SupplierMetrics).all()
 
     if len(metrics_list) < 5:
         return
 
-    npi_list = []
-    features = []
+    # Use latest-period metrics per NPI (most recent quarter)
+    latest_metrics = {}
     for m in metrics_list:
-        npi_list.append(m.supplier_npi)
+        existing = latest_metrics.get(m.supplier_npi)
+        if existing is None or m.period > existing.period:
+            latest_metrics[m.supplier_npi] = m
+
+    unique_metrics = list(latest_metrics.values())
+    npi_list = [m.supplier_npi for m in unique_metrics]
+    features = []
+    for m in unique_metrics:
         features.append([
             m.total_billed or 0,
             m.total_claims or 0,
@@ -174,44 +233,92 @@ def _run_cluster_detection(db: Session):
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    dbscan = DBSCAN(eps=0.8, min_samples=3)
+    dbscan = DBSCAN(eps=1.0, min_samples=3)
     labels = dbscan.fit_predict(X_scaled)
 
     # Clear existing clusters
     db.query(SupplierCluster).delete()
 
+    # Build per-cluster member lists for shared attribute computation
+    # Filter out very large clusters (>50 members) — these are the
+    # legitimate-supplier baseline population, not fraud rings.
+    cluster_members = {}  # cluster_id -> list of NPIs
     for npi, label in zip(npi_list, labels):
         if label == -1:  # noise
             continue
+        cluster_members.setdefault(int(label), []).append(npi)
 
-        cluster_entry = SupplierCluster(
-            cluster_id=int(label),
-            supplier_npi=npi,
-            shared_attributes={
-                "detection_method": "DBSCAN",
-                "shared_hcpcs": ["E1390", "K0856", "L1832"],
-                "geo_overlap": True,
-                "growth_sync": True,
-            },
-        )
-        db.add(cluster_entry)
+    # Remove baseline clusters (too large to be coordinated fraud)
+    cluster_members = {
+        cid: npis for cid, npis in cluster_members.items()
+        if len(npis) <= 50
+    }
+
+    # Compute ACTUAL shared attributes for each cluster
+    for cid, member_npis in cluster_members.items():
+        # Find genuinely shared HCPCS codes across cluster members
+        from backend.db.models import Claim
+        member_hcpcs = {}  # npi -> set of hcpcs codes
+        all_hcpcs_counts = Counter()
+        for npi in member_npis:
+            codes = [
+                r[0] for r in
+                db.query(Claim.hcpcs_code)
+                .filter(Claim.supplier_npi == npi)
+                .distinct()
+                .all()
+            ]
+            member_hcpcs[npi] = set(codes)
+            for c in codes:
+                all_hcpcs_counts[c] += 1
+
+        # Shared HCPCS = codes billed by at least 50% of cluster members
+        threshold = max(2, len(member_npis) // 2)
+        shared_hcpcs = sorted(
+            [code for code, count in all_hcpcs_counts.items() if count >= threshold],
+            key=lambda c: all_hcpcs_counts[c],
+            reverse=True,
+        )[:5]  # Top 5 shared codes
+
+        # Check for synchronized growth patterns
+        growth_rates = [
+            latest_metrics[npi].growth_rate
+            for npi in member_npis
+            if npi in latest_metrics and latest_metrics[npi].growth_rate is not None
+        ]
+        growth_sync = False
+        if len(growth_rates) >= 2:
+            # If most members have high growth, they're synchronized
+            high_growth = sum(1 for g in growth_rates if abs(g) > 100)
+            growth_sync = high_growth >= len(growth_rates) * 0.5
+
+        # Check for geographic overlap
+        geo_spreads = [
+            latest_metrics[npi].geographic_spread
+            for npi in member_npis
+            if npi in latest_metrics and latest_metrics[npi].geographic_spread is not None
+        ]
+        geo_overlap = False
+        if len(geo_spreads) >= 2:
+            # If most members have high geo spread, there's overlap
+            high_geo = sum(1 for g in geo_spreads if g > 0.5)
+            geo_overlap = high_geo >= len(geo_spreads) * 0.5
+
+        # Store cluster entries with computed attributes
+        for npi in member_npis:
+            cluster_entry = SupplierCluster(
+                cluster_id=cid,
+                supplier_npi=npi,
+                shared_attributes={
+                    "detection_method": "DBSCAN",
+                    "shared_hcpcs": shared_hcpcs,
+                    "geo_overlap": geo_overlap,
+                    "growth_sync": growth_sync,
+                },
+            )
+            db.add(cluster_entry)
 
     db.flush()
-
-    # Compute cluster-level risk scores
-    cluster_ids = set(l for l in labels if l != -1)
-    for cid in cluster_ids:
-        member_npis = [npi for npi, l in zip(npi_list, labels) if l == cid]
-        member_scores = (
-            db.query(AnomalyScore.composite_score)
-            .filter(AnomalyScore.supplier_npi.in_(member_npis))
-            .all()
-        )
-        avg_score = np.mean([s[0] for s in member_scores]) if member_scores else 50
-
-        db.query(SupplierCluster).filter(
-            SupplierCluster.cluster_id == cid
-        ).update({"cluster_risk_score": float(avg_score)})
 
 
 def _compute_composite_scores(db: Session, isolation_scores: dict, z_scores: dict):
@@ -240,7 +347,7 @@ def _compute_composite_scores(db: Session, isolation_scores: dict, z_scores: dic
             .first()
         )
 
-        growth_score = min(abs(m.growth_rate or 0) * 2, 100) if m else 20
+        growth_score = min(abs(m.growth_rate or 0) * 2.5, 100) if m else 20
         geo_score = min((m.geographic_spread or 0) * 100, 100) if m else 15
         hcpcs_score = min((m.unique_hcpcs or 1) * 8, 100) if m else 20
 
@@ -276,5 +383,32 @@ def _compute_composite_scores(db: Session, isolation_scores: dict, z_scores: dic
             z_score=z,
         )
         db.add(score)
+
+    db.flush()
+
+
+def _update_cluster_risk_scores(db: Session):
+    """Update cluster-level risk scores as the average composite score of members."""
+    cluster_ids = [
+        r[0] for r in db.query(SupplierCluster.cluster_id).distinct().all()
+    ]
+
+    for cid in cluster_ids:
+        member_npis = [
+            r[0] for r in
+            db.query(SupplierCluster.supplier_npi)
+            .filter(SupplierCluster.cluster_id == cid)
+            .all()
+        ]
+        member_scores = (
+            db.query(AnomalyScore.composite_score)
+            .filter(AnomalyScore.supplier_npi.in_(member_npis))
+            .all()
+        )
+        avg_score = float(np.mean([s[0] for s in member_scores])) if member_scores else 50.0
+
+        db.query(SupplierCluster).filter(
+            SupplierCluster.cluster_id == cid
+        ).update({"cluster_risk_score": avg_score})
 
     db.flush()

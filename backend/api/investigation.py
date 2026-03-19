@@ -276,7 +276,9 @@ def query_history(db: Session = Depends(get_db)):
 
 
 def _run_pattern(criteria: dict, db: Session) -> list:
-    """Execute a pattern against the supplier database."""
+    """Execute a pattern against the supplier database — all 6 criteria."""
+    from datetime import datetime, timedelta
+
     q = db.query(Supplier, AnomalyScore).outerjoin(
         AnomalyScore, AnomalyScore.supplier_npi == Supplier.npi
     )
@@ -285,10 +287,42 @@ def _run_pattern(criteria: dict, db: Session) -> list:
         q = q.filter(AnomalyScore.composite_score >= criteria["risk_score_min"])
     if criteria.get("states"):
         q = q.filter(Supplier.state.in_(criteria["states"]))
+    if criteria.get("enrollment_months_max"):
+        cutoff = datetime.utcnow() - timedelta(days=30 * criteria["enrollment_months_max"])
+        q = q.filter(Supplier.enrollment_date >= cutoff)
 
     results = q.all()
     matches = []
     for supplier, score in results:
+        # Additional per-row filtering against metrics
+        if criteria.get("growth_rate_min") or criteria.get("billing_volume_min") or criteria.get("hcpcs_codes"):
+            from backend.db.models import SupplierMetrics, Claim
+            m = (
+                db.query(SupplierMetrics)
+                .filter(SupplierMetrics.supplier_npi == supplier.npi)
+                .order_by(SupplierMetrics.period.desc())
+                .first()
+            )
+
+            if criteria.get("growth_rate_min"):
+                if not m or (m.growth_rate or 0) < criteria["growth_rate_min"]:
+                    continue
+
+            if criteria.get("billing_volume_min"):
+                if not m or (m.total_billed or 0) < criteria["billing_volume_min"]:
+                    continue
+
+            if criteria.get("hcpcs_codes"):
+                supplier_codes = [
+                    r[0] for r in
+                    db.query(Claim.hcpcs_code)
+                    .filter(Claim.supplier_npi == supplier.npi)
+                    .distinct()
+                    .all()
+                ]
+                if not any(c in supplier_codes for c in criteria["hcpcs_codes"]):
+                    continue
+
         matches.append({
             "npi": supplier.npi,
             "name": supplier.name,

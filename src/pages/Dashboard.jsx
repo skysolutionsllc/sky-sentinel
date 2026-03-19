@@ -8,7 +8,7 @@ import {
 import {
   Shield, TrendingUp, Target, Building2, Activity,
   CheckCircle2, XCircle, Hourglass, PauseCircle,
-  AlertTriangle, Map, Info
+  AlertTriangle, Map, Info, Bot
 } from 'lucide-react'
 import USHeatmap from '../components/charts/USHeatmap'
 import FairnessPanel from '../components/charts/FairnessPanel'
@@ -610,6 +610,98 @@ export default function Dashboard() {
                     <span style={{ fontSize: 12, color: 'var(--sky-text-muted)' }}>{a.supplier_state}</span>
                   </CellTooltip>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── AI Detection Methodology ── */}
+        <div className="glass-card full-width slide-up">
+          <div className="chart-header">
+            <div>
+              <div className="chart-title flex-center gap-2">
+                <Bot size={18} />
+                AI Detection Methodology
+              </div>
+              <div className="chart-subtitle">How Sky Sentinel calculates composite risk scores</div>
+            </div>
+          </div>
+
+          {/* Composite Score Formula */}
+          <div style={{ padding: '16px 0', marginBottom: 16 }}>
+            <div style={{ fontSize: 12, color: 'var(--sky-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+              Composite Score Formula
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
+              {[
+                { label: 'Billing Volume', weight: '20%', color: '#EF4444', algo: 'Isolation Forest' },
+                { label: 'Growth Rate', weight: '20%', color: '#F59E0B', algo: 'Time-Series' },
+                { label: 'HCPCS Mix', weight: '15%', color: '#3B82F6', algo: 'Peer Deviation' },
+                { label: 'Geo Spread', weight: '15%', color: '#8B5CF6', algo: 'Distribution' },
+                { label: 'AI Context', weight: '15%', color: '#10B981', algo: 'Z-Score' },
+                { label: 'Cluster Link', weight: '15%', color: '#EC4899', algo: 'DBSCAN' },
+              ].map((f, i) => (
+                <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {i > 0 && <span style={{ color: 'var(--sky-text-muted)', fontSize: 14, marginRight: 4 }}>+</span>}
+                  <div style={{
+                    padding: '8px 12px', borderRadius: 8,
+                    background: `${f.color}15`,
+                    border: `1px solid ${f.color}30`,
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: f.color }}>{f.weight}</div>
+                    <div style={{ fontSize: 10, color: 'var(--sky-text-secondary)', marginTop: 2 }}>{f.label}</div>
+                    <div style={{ fontSize: 9, color: 'var(--sky-text-muted)', marginTop: 1 }}>{f.algo}</div>
+                  </div>
+                </div>
+              ))}
+              <span style={{ color: 'var(--sky-text-muted)', fontSize: 14, margin: '0 8px' }}>=</span>
+              <div style={{
+                padding: '8px 16px', borderRadius: 8,
+                background: 'rgba(33,150,243,0.1)',
+                border: '1px solid rgba(33,150,243,0.3)',
+                textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--sky-light)' }}>0–100</div>
+                <div style={{ fontSize: 10, color: 'var(--sky-text-secondary)' }}>Risk Score</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Three columns: algorithms */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+            <div style={{ padding: 14, borderRadius: 10, background: 'rgba(10,22,40,0.5)', border: '1px solid var(--sky-border)' }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#EF4444', marginBottom: 6 }}>Isolation Forest</div>
+              <div style={{ fontSize: 12, color: 'var(--sky-text-secondary)', lineHeight: 1.6 }}>
+                100-tree ensemble evaluates 7 features simultaneously. Anomalies require fewer splits to isolate in random trees. contamination=10%.
+              </div>
+            </div>
+            <div style={{ padding: 14, borderRadius: 10, background: 'rgba(10,22,40,0.5)', border: '1px solid var(--sky-border)' }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#10B981', marginBottom: 6 }}>Z-Score Analysis</div>
+              <div style={{ fontSize: 12, color: 'var(--sky-text-secondary)', lineHeight: 1.6 }}>
+                Measures standard deviations from state peer group mean billing. Z = |billing − mean| / σ. Score = min(Z × 25, 100).
+              </div>
+            </div>
+            <div style={{ padding: 14, borderRadius: 10, background: 'rgba(10,22,40,0.5)', border: '1px solid var(--sky-border)' }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#EC4899', marginBottom: 6 }}>DBSCAN Clustering</div>
+              <div style={{ fontSize: 12, color: 'var(--sky-text-secondary)', lineHeight: 1.6 }}>
+                Density-based scan in 5D behavioral space (eps=0.8, min_samples=3). Discovers coordinated networks without preset cluster count.
+              </div>
+            </div>
+          </div>
+
+          {/* Risk thresholds */}
+          <div style={{ display: 'flex', gap: 16, marginTop: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+            {[
+              { level: 'Critical', min: '≥80', color: 'var(--risk-critical)', desc: 'Immediate investigation' },
+              { level: 'High', min: '≥60', color: 'var(--risk-high)', desc: 'Prioritized review' },
+              { level: 'Medium', min: '≥40', color: 'var(--risk-medium)', desc: 'Monitor closely' },
+              { level: 'Low', min: '<40', color: 'var(--risk-low)', desc: 'Normal parameters' },
+            ].map(t => (
+              <div key={t.level} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: t.color, display: 'inline-block' }} />
+                <span style={{ fontWeight: 600, color: t.color }}>{t.level} ({t.min})</span>
+                <span style={{ color: 'var(--sky-text-muted)' }}>— {t.desc}</span>
               </div>
             ))}
           </div>
