@@ -10,8 +10,8 @@ const PROVIDER_MODELS = {
     { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku' },
   ],
   openai: [
-    { value: 'gpt-5.4-mini', label: 'GPT-5.4 Mini (Latest)', isDefault: true },
-    { value: 'gpt-5.4-nano', label: 'GPT-5.4 Nano' },
+    { value: 'chatgpt-5.4-mini', label: 'ChatGPT 5.4 Mini (Latest)', isDefault: true },
+    { value: 'chatgpt-5.4-nano', label: 'ChatGPT 5.4 Nano' },
     { value: 'gpt-4.1-2025-04-14', label: 'GPT-4.1' },
     { value: 'gpt-4.1-mini-2025-04-14', label: 'GPT-4.1 Mini' },
     { value: 'gpt-4.1-nano-2025-04-14', label: 'GPT-4.1 Nano' },
@@ -32,14 +32,14 @@ const PROVIDER_MODELS = {
 
 export default function Settings() {
   const [provider, setProvider] = useState('openai')
-  const [model, setModel] = useState('gpt-4.1-2025-04-14')
+  const [model, setModel] = useState('chatgpt-5.4-mini')
   const [anthropicKey, setAnthropicKey] = useState('')
   const [openaiKey, setOpenaiKey] = useState('')
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     setProvider(localStorage.getItem('llm_provider') || 'openai')
-    setModel(localStorage.getItem('llm_model') || 'gpt-4.1-2025-04-14')
+    setModel(localStorage.getItem('llm_model') || 'chatgpt-5.4-mini')
     setAnthropicKey(localStorage.getItem('llm_api_key_anthropic') || '')
     setOpenaiKey(localStorage.getItem('llm_api_key_openai') || '')
   }, [])

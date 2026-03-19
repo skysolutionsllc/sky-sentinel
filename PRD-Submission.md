@@ -666,7 +666,7 @@ The risk score (0–100) is a weighted combination of:
 | **Database** | SQLite | Zero-config, single-file, perfect for hackathon portability |
 | **ORM** | SQLAlchemy | Pythonic database access, easy migration to PostgreSQL later |
 | **AI/ML** | scikit-learn | Isolation Forest, DBSCAN, statistical analysis |
-| **LLM** | OpenAI API (GPT-4) or Claude API | Narrative analysis, explainability, NL query processing |
+| **LLM** | OpenAI API (ChatGPT 5.4 Mini) or Claude API | Narrative analysis, explainability, NL query processing |
 | **Data** | Pandas + NumPy | Data processing, synthetic data generation |
 | **Containerization** | Docker + docker-compose | One-command setup for judges and demo |
 

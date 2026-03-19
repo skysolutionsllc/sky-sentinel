@@ -128,14 +128,14 @@ class OpenAIProvider(BaseLLMProvider):
         import openai
         key = api_key or OPENAI_API_KEY
         self.client = openai.OpenAI(api_key=key)
-        self.model = model_name or LLM_MODEL or "gpt-4.1"
+        self.model = model_name or LLM_MODEL or "chatgpt-5.4-mini"
 
     def _call(self, system: str, prompt: str, max_tokens: int = 1500) -> str:
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": prompt}
         ]
-        # Try max_completion_tokens first (required by o1, o3, gpt-4.1+),
+        # Try max_completion_tokens first (required by newer models like GPT-5.4),
         # then fall back to max_tokens, then no limit at all.
         for kwargs in [
             {"max_completion_tokens": max_tokens},
