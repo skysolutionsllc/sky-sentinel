@@ -10,8 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from backend.bootstrap import launch_background_bootstrap_if_enabled, prepare_runtime
 from backend.config import CORS_ORIGINS
-from backend.db.database import init_db
 from backend.auth import (
     LoginRequest, TokenResponse, authenticate_user, create_token,
     get_current_user,
@@ -35,7 +35,8 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup():
-    init_db()
+    counts = prepare_runtime()
+    launch_background_bootstrap_if_enabled(counts)
 
 
 # --- Auth endpoints ---

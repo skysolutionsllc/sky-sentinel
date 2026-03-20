@@ -6,8 +6,7 @@ echo "=== Sky Sentinel startup ==="
 # Ensure the persistent SQLite mount path exists.
 mkdir -p /data
 
-# Create tables and seed only on a truly new / effectively empty database.
-python -m backend.bootstrap
+export SKY_SENTINEL_AUTO_BOOTSTRAP="${SKY_SENTINEL_AUTO_BOOTSTRAP:-1}"
 
 if [ "$#" -gt 0 ]; then
     echo "=== Executing custom command ==="

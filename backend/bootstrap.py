@@ -1,11 +1,18 @@
 """Database bootstrap helpers for container startup."""
+from __future__ import annotations
+
+import argparse
+import fcntl
+import os
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 from typing import Dict, Optional
 
 from sqlalchemy import desc, func, or_
 
 from backend.config import DATABASE_URL
-from backend.data.seed_data import seed_database
 from backend.db.database import SessionLocal, init_db
 from backend.db.models import Alert, Claim, PeerGroup, Supplier, SupplierCluster, SupplierMetrics
 from backend.services.llm_service import get_llm_provider, is_usable_llm_text
@@ -13,6 +20,11 @@ from backend.services.llm_service import get_llm_provider, is_usable_llm_text
 
 HIGH_RISK_NARRATIVE_THRESHOLD = 60.0
 UNUSABLE_NARRATIVE_SQL_PATTERN = "%LLM analysis unavailable%"
+AUTO_BOOTSTRAP_ENV = "SKY_SENTINEL_AUTO_BOOTSTRAP"
+BOOTSTRAP_LOCK_PATH_ENV = "SKY_SENTINEL_BOOTSTRAP_LOCK_FILE"
+BOOTSTRAP_STATE_PATH_ENV = "SKY_SENTINEL_BOOTSTRAP_STATE_FILE"
+SEED_STATE_INCOMPLETE = "seed_incomplete"
+SEED_STATE_COMPLETE = "seed_complete"
 
 
 def _resolve_sqlite_path(database_url: str) -> Optional[Path]:
@@ -24,6 +36,51 @@ def _resolve_sqlite_path(database_url: str) -> Optional[Path]:
         return None
 
     return Path(normalized_path)
+
+
+def _env_flag_enabled(name: str, default: str = "0") -> bool:
+    return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _resolve_bootstrap_artifact_path(*, env_var: str, suffix: str) -> Path:
+    configured_path = os.getenv(env_var)
+    if configured_path:
+        return Path(configured_path)
+
+    sqlite_path = _resolve_sqlite_path(DATABASE_URL)
+    if sqlite_path is not None:
+        stem = sqlite_path.stem or "sky_sentinel"
+        return sqlite_path.parent / f".{stem}.bootstrap.{suffix}"
+
+    return Path(tempfile.gettempdir()) / f"sky-sentinel.bootstrap.{suffix}"
+
+
+def _resolve_bootstrap_lock_path() -> Path:
+    return _resolve_bootstrap_artifact_path(
+        env_var=BOOTSTRAP_LOCK_PATH_ENV,
+        suffix="lock",
+    )
+
+
+def _resolve_bootstrap_state_path() -> Path:
+    return _resolve_bootstrap_artifact_path(
+        env_var=BOOTSTRAP_STATE_PATH_ENV,
+        suffix="state",
+    )
+
+
+def _read_seed_state() -> str:
+    state_path = _resolve_bootstrap_state_path()
+    try:
+        return state_path.read_text(encoding="utf-8").strip()
+    except FileNotFoundError:
+        return ""
+
+
+def _write_seed_state(state: str) -> None:
+    state_path = _resolve_bootstrap_state_path()
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(f"{state}\n", encoding="utf-8")
 
 
 def _get_core_record_counts() -> Dict[str, int]:
@@ -38,8 +95,47 @@ def _get_core_record_counts() -> Dict[str, int]:
         db.close()
 
 
+def prepare_runtime() -> Dict[str, int]:
+    """Create schema quickly and return the current core table counts."""
+    init_db()
+    return _get_core_record_counts()
+
+
 def _is_effectively_empty(counts: Dict[str, int]) -> bool:
     return all(count == 0 for count in counts.values())
+
+
+def _has_missing_alert_narratives() -> bool:
+    db = SessionLocal()
+    try:
+        return (
+            db.query(Alert.id)
+            .filter(Alert.risk_score >= HIGH_RISK_NARRATIVE_THRESHOLD)
+            .filter(
+                or_(
+                    Alert.llm_narrative.is_(None),
+                    func.trim(Alert.llm_narrative) == "",
+                    Alert.llm_narrative.like(UNUSABLE_NARRATIVE_SQL_PATTERN),
+                )
+            )
+            .first()
+            is not None
+        )
+    finally:
+        db.close()
+
+
+def should_run_bootstrap(counts: Optional[Dict[str, int]] = None) -> bool:
+    """Return True when startup should launch the background bootstrap worker."""
+    current_counts = counts if counts is not None else prepare_runtime()
+
+    if _is_effectively_empty(current_counts):
+        return True
+
+    if _read_seed_state() == SEED_STATE_INCOMPLETE:
+        return True
+
+    return _has_missing_alert_narratives()
 
 
 def _build_supplier_narrative_inputs(db, supplier: Supplier) -> tuple[dict, list, dict]:
@@ -214,8 +310,23 @@ def _repair_missing_alert_narratives() -> Dict[str, int]:
         db.close()
 
 
+def _run_initial_seed(reason: str) -> None:
+    print(reason)
+    _write_seed_state(SEED_STATE_INCOMPLETE)
+
+    try:
+        from backend.data.seed_data import seed_database
+
+        seed_database()
+    except Exception:
+        _write_seed_state(SEED_STATE_INCOMPLETE)
+        raise
+    else:
+        _write_seed_state(SEED_STATE_COMPLETE)
+
+
 def bootstrap_database() -> bool:
-    """Create tables and seed only when the database is absent or empty."""
+    """Create schema quickly, seed when needed, and repair narratives."""
     sqlite_path = _resolve_sqlite_path(DATABASE_URL)
     sqlite_exists = bool(
         sqlite_path is not None
@@ -223,15 +334,17 @@ def bootstrap_database() -> bool:
         and sqlite_path.stat().st_size > 0
     )
 
-    init_db()
-    counts = _get_core_record_counts()
+    counts = prepare_runtime()
+    seed_state = _read_seed_state()
 
     seeded = False
 
     if _is_effectively_empty(counts):
         state = "effectively empty" if sqlite_exists else "absent"
-        print(f"[Bootstrap] Database is {state}; running initial seed...")
-        seed_database()
+        _run_initial_seed(f"[Bootstrap] Database is {state}; running initial seed...")
+        seeded = True
+    elif seed_state == SEED_STATE_INCOMPLETE:
+        _run_initial_seed("[Bootstrap] Previous bootstrap did not finish; rerunning initial seed...")
         seeded = True
     else:
         print(
@@ -239,6 +352,8 @@ def bootstrap_database() -> bool:
             f"suppliers={counts['suppliers']}, claims={counts['claims']}, alerts={counts['alerts']}. "
             "Skipping seed."
         )
+        if all(count > 0 for count in counts.values()):
+            _write_seed_state(SEED_STATE_COMPLETE)
 
     try:
         repair_counts = _repair_missing_alert_narratives()
@@ -257,6 +372,80 @@ def bootstrap_database() -> bool:
     return seeded
 
 
-if __name__ == "__main__":
+def run_bootstrap_with_lock() -> bool:
+    """Run bootstrap work once, guarded by an inter-process file lock."""
+    lock_path = _resolve_bootstrap_lock_path()
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with lock_path.open("a+", encoding="utf-8") as lock_file:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            print(
+                "[Bootstrap] Another bootstrap worker is already running; "
+                f"skipping duplicate launch ({lock_path})."
+            )
+            return False
+
+        lock_file.seek(0)
+        lock_file.truncate()
+        lock_file.write(f"{os.getpid()}\n")
+        lock_file.flush()
+        os.fsync(lock_file.fileno())
+
+        seeded = bootstrap_database()
+        print(f"[Bootstrap] Seed {'completed' if seeded else 'not required'}.")
+        return seeded
+
+
+def launch_background_bootstrap_if_enabled(
+    counts: Optional[Dict[str, int]] = None,
+) -> Optional[subprocess.Popen]:
+    """Launch the background bootstrap worker when runtime policy requires it."""
+    if not _env_flag_enabled(AUTO_BOOTSTRAP_ENV):
+        return None
+
+    if not should_run_bootstrap(counts):
+        return None
+
+    process = subprocess.Popen([sys.executable, "-m", "backend.bootstrap", "--run-with-lock"])
+    print(f"[Bootstrap] Background bootstrap launched (pid={process.pid}).")
+    return process
+
+
+def _build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Sky Sentinel bootstrap helpers")
+    parser.add_argument(
+        "--prepare-runtime",
+        action="store_true",
+        help="Create the schema quickly without running seed or repair work.",
+    )
+    parser.add_argument(
+        "--run-with-lock",
+        action="store_true",
+        help="Run seed/repair work once under the bootstrap lock.",
+    )
+    return parser
+
+
+def main() -> None:
+    args = _build_arg_parser().parse_args()
+
+    if args.prepare_runtime:
+        counts = prepare_runtime()
+        print(
+            "[Bootstrap] Runtime prepared; "
+            f"suppliers={counts['suppliers']}, claims={counts['claims']}, alerts={counts['alerts']}."
+        )
+        return
+
+    if args.run_with_lock:
+        run_bootstrap_with_lock()
+        return
+
     seeded = bootstrap_database()
     print(f"[Bootstrap] Seed {'completed' if seeded else 'not required'}.")
+
+
+if __name__ == "__main__":
+    main()

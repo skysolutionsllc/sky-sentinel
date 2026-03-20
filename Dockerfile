@@ -32,6 +32,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     BACKEND_PORT=8000 \
     DATABASE_URL=sqlite:////data/sky_sentinel.db \
     FRONTEND_DIST_DIR=/app/static \
+    SKY_SENTINEL_AUTO_BOOTSTRAP=1 \
     LLM_PROVIDER=mock
 
 RUN apt-get update && \
@@ -54,7 +55,7 @@ RUN mkdir -p /data && \
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=300s --retries=10 \
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=10 \
     CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://127.0.0.1:{os.getenv(\"BACKEND_PORT\", \"8000\")}/api/health', timeout=3).read()"
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/app/entrypoint.sh"]

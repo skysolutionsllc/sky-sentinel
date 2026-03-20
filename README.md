@@ -900,14 +900,17 @@ docker run \
 
 Open **http://localhost:8000** — the app is live.
 
-On first boot the entrypoint automatically creates tables and seeds the database only when the configured database is absent or effectively empty. Restarts do **not** wipe existing data.
+On first boot the container now creates the schema immediately, starts uvicorn right away, and then runs the heavy seed flow in the background only when the configured database is absent or effectively empty. Restarts do **not** wipe existing data, and an interrupted first-boot seed is retried safely on the next startup.
 
 #### Runtime Behavior
 
 - FastAPI serves the built frontend directly from the container.
 - `/api/*` stays on the backend exactly as before.
 - Non-API routes such as `/alerts` or `/suppliers/1234567890` fall back to `index.html` for SPA routing.
-- `LLM_PROVIDER=openai` is the default; set to `mock` for zero-API-key demo mode.
+- The image becomes healthy as soon as `/api/health` responds; seed + LLM narrative work no longer blocks healthchecks.
+- If the DB is empty, the app seeds in a background worker after startup; if the DB already exists, missing high-risk narratives can also be repaired in that same background flow.
+- The background worker uses a small lock/state file beside the SQLite DB to avoid duplicate runs and to retry interrupted first-boot seeds safely.
+- The Docker image defaults `LLM_PROVIDER=mock` for zero-key demos; local non-Docker runs still default to `openai` unless you override it.
 - SQLite persistence is controlled by `DATABASE_URL`; for Coolify, mount `/data` and keep `DATABASE_URL=sqlite:////data/sky_sentinel.db`.
 
 #### Environment Variables
@@ -916,7 +919,8 @@ On first boot the entrypoint automatically creates tables and seeds the database
 |---|---|---|
 | `BACKEND_PORT` | `8000` | Port uvicorn listens on |
 | `DATABASE_URL` | `sqlite:////data/sky_sentinel.db` | SQLite path (mount `/data` for persistence) |
-| `LLM_PROVIDER` | `openai` | `openai`, `anthropic`, `local`, or `mock` |
+| `SKY_SENTINEL_AUTO_BOOTSTRAP` | `1` | Start the background seed/repair worker on backend startup; set `0` to disable |
+| `LLM_PROVIDER` | `mock` | `openai`, `anthropic`, `local`, or `mock` |
 | `OPENAI_API_KEY` | *(empty)* | Required when `LLM_PROVIDER=openai` |
 | `ANTHROPIC_API_KEY` | *(empty)* | Required when `LLM_PROVIDER=anthropic` |
 | `CMS_API_BASE_URL` | `https://data.cms.gov/data-api/v1/dataset` | CMS data endpoint |
@@ -930,9 +934,10 @@ On first boot the entrypoint automatically creates tables and seeds the database
 5. Set environment variables:
    - `BACKEND_PORT=8000`
    - `DATABASE_URL=sqlite:////data/sky_sentinel.db`
+   - `SKY_SENTINEL_AUTO_BOOTSTRAP=1`
    - `LLM_PROVIDER=mock` unless you want a live provider
    - `OPENAI_API_KEY` — required for LLM features (or use `LLM_PROVIDER=mock` for demo)
-6. Deploy — Coolify will build the image, initialize the database on first boot, and start the single container.
+6. Deploy — Coolify will start the container, the health endpoint will come up quickly, and the first-boot seed / any missing narrative repair will continue in the background without blocking the deployment healthcheck.
 
 ---
 
