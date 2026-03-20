@@ -46,10 +46,13 @@ def geo_risk(db: Session = Depends(get_db)):
             Supplier.state,
             func.count(Alert.id).label("alert_count"),
             func.avg(Alert.risk_score).label("avg_risk"),
-            func.count(Supplier.npi).label("supplier_count"),
+            # Fairness reviews should measure supplier exposure, not repeated alert rows.
+            func.count(func.distinct(Supplier.npi)).label("supplier_count"),
+            func.count(func.distinct(Alert.supplier_npi)).label("flagged_supplier_count"),
         )
         .join(Alert, Alert.supplier_npi == Supplier.npi, isouter=True)
         .group_by(Supplier.state)
+        .order_by(Supplier.state)
         .all()
     )
     return [
@@ -58,6 +61,7 @@ def geo_risk(db: Session = Depends(get_db)):
             "alert_count": r.alert_count,
             "avg_risk": round(r.avg_risk, 1) if r.avg_risk else 0,
             "supplier_count": r.supplier_count,
+            "flagged_supplier_count": r.flagged_supplier_count,
         }
         for r in rows
     ]

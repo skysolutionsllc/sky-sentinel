@@ -1,5 +1,6 @@
 import { useState, memo } from 'react'
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps'
+import { getFlaggedSupplierCount, getSupplierFlagRate } from '../../utils/geoRisk'
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json"
 
@@ -79,7 +80,9 @@ function USHeatmap({ geoRisk = [] }) {
                         abbr: stateAbbr,
                         avgRisk: avgRisk,
                         alerts: alertCount,
+                        flaggedSuppliers: getFlaggedSupplierCount(data),
                         suppliers: data?.supplier_count || 0,
+                        supplierFlagRate: getSupplierFlagRate(data),
                       })
                     }}
                     onMouseLeave={() => setTooltip(null)}
@@ -141,14 +144,18 @@ function USHeatmap({ geoRisk = [] }) {
               <span style={{ fontWeight: 600, fontSize: 12 }}>{tooltip.alerts}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#94A3B8', fontSize: 12 }}>Flagged Suppliers</span>
+              <span style={{ fontWeight: 600, fontSize: 12 }}>{tooltip.flaggedSuppliers}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#94A3B8', fontSize: 12 }}>Suppliers</span>
               <span style={{ fontWeight: 600, fontSize: 12 }}>{tooltip.suppliers}</span>
             </div>
             {tooltip.suppliers > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#94A3B8', fontSize: 12 }}>Flag Rate</span>
+                <span style={{ color: '#94A3B8', fontSize: 12 }}>Supplier Flag Rate</span>
                 <span style={{ fontWeight: 700, fontSize: 12, color: '#F59E0B' }}>
-                  {((tooltip.alerts / tooltip.suppliers) * 100).toFixed(1)}%
+                  {tooltip.supplierFlagRate.toFixed(1)}%
                 </span>
               </div>
             )}

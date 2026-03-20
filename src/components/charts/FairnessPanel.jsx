@@ -1,64 +1,41 @@
 import { useMemo } from 'react'
 import { Scale, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { analyzeGeoRiskFairness, FAIRNESS_MIN_SUPPLIERS } from '../../utils/geoRisk'
 
 /**
  * Fairness Review Panel
  * 
- * Analyzes alert distribution across states to demonstrate that the
- * risk scoring system isn't geographically biased. Compares the ratio
- * of flagged suppliers to total suppliers for each state.
+ * Analyzes supplier-level flagging distribution across states to demonstrate
+ * that the risk scoring system isn't geographically biased.
  */
 export default function FairnessPanel({ geoRisk = [] }) {
-  const analysis = useMemo(() => {
-    if (!geoRisk || geoRisk.length === 0) return null
-
-    const statesWithData = geoRisk.filter(g => g.supplier_count > 0)
-    if (statesWithData.length === 0) return null
-
-    // Calculate flagging rate per state
-    const flaggingRates = statesWithData.map(g => ({
-      state: g.state,
-      suppliers: g.supplier_count,
-      alerts: g.alert_count,
-      rate: g.supplier_count > 0 ? (g.alert_count / g.supplier_count) * 100 : 0,
-      avgRisk: g.avg_risk || 0,
-    })).sort((a, b) => b.rate - a.rate)
-
-    // Overall statistics
-    const totalSuppliers = statesWithData.reduce((s, g) => s + g.supplier_count, 0)
-    const totalAlerts = statesWithData.reduce((s, g) => s + g.alert_count, 0)
-    const overallRate = totalSuppliers > 0 ? (totalAlerts / totalSuppliers) * 100 : 0
-
-    // Calculate standard deviation of flagging rates
-    const rates = flaggingRates.map(r => r.rate).filter(r => r > 0)
-    const mean = rates.reduce((s, r) => s + r, 0) / (rates.length || 1)
-    const variance = rates.reduce((s, r) => s + Math.pow(r - mean, 2), 0) / (rates.length || 1)
-    const stdDev = Math.sqrt(variance)
-
-    // Coefficient of variation — lower means more uniform distribution
-    const cv = mean > 0 ? (stdDev / mean) * 100 : 0
-
-    // Identify any outlier states (more than 2 std dev from mean)
-    const outliers = flaggingRates.filter(r => r.rate > 0 && Math.abs(r.rate - mean) > 2 * stdDev)
-
-    // Fairness verdict
-    const isFair = cv < 80 && outliers.length <= 2
-
-    return {
-      flaggingRates,
-      overallRate,
-      mean,
-      stdDev,
-      cv,
-      outliers,
-      isFair,
-      statesAnalyzed: statesWithData.length,
-      totalSuppliers,
-      totalAlerts,
-    }
-  }, [geoRisk])
+  const analysis = useMemo(() => analyzeGeoRiskFairness(geoRisk), [geoRisk])
 
   if (!analysis) return null
+
+  const verdictTone = analysis.canIssueVerdict
+    ? analysis.isFair ? 'low' : 'high'
+    : 'medium'
+  const verdictLabel = analysis.canIssueVerdict
+    ? analysis.isFair ? 'Fair' : 'Review Needed'
+    : 'Monitoring'
+  const verdictAccent = verdictTone === 'low'
+    ? 'var(--risk-low)'
+    : verdictTone === 'medium'
+      ? 'var(--risk-medium)'
+      : 'var(--risk-high)'
+  const verdictBackground = verdictTone === 'low'
+    ? 'rgba(16, 185, 129, 0.08)'
+    : verdictTone === 'medium'
+      ? 'rgba(59, 130, 246, 0.08)'
+      : 'rgba(245, 158, 11, 0.08)'
+  const verdictBorder = verdictTone === 'low'
+    ? 'rgba(16, 185, 129, 0.2)'
+    : verdictTone === 'medium'
+      ? 'rgba(59, 130, 246, 0.2)'
+      : 'rgba(245, 158, 11, 0.2)'
+  const outlierStates = new Set(analysis.outliers.map(entry => entry.state))
+  const topRate = analysis.flaggingRates[0]?.smoothedRate || 0
 
   return (
     <div className="glass-card slide-up">
@@ -70,8 +47,8 @@ export default function FairnessPanel({ geoRisk = [] }) {
           </div>
           <div className="chart-subtitle">Algorithmic fairness assessment across geographies</div>
         </div>
-        <span className={`risk-badge ${analysis.isFair ? 'low' : 'high'}`}>
-          {analysis.isFair ? 'Fair' : 'Review Needed'}
+        <span className={`risk-badge ${verdictTone}`}>
+          {verdictLabel}
         </span>
       </div>
 
@@ -84,7 +61,7 @@ export default function FairnessPanel({ geoRisk = [] }) {
           border: '1px solid var(--sky-border)',
           textAlign: 'center',
         }}>
-          <div style={{ fontSize: 11, color: 'var(--sky-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Overall Flag Rate</div>
+          <div style={{ fontSize: 11, color: 'var(--sky-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Supplier Flag Rate</div>
           <div style={{ fontSize: 22, fontWeight: 700 }}>{analysis.overallRate.toFixed(1)}%</div>
         </div>
         <div style={{
@@ -105,48 +82,56 @@ export default function FairnessPanel({ geoRisk = [] }) {
           textAlign: 'center',
         }}>
           <div style={{ fontSize: 11, color: 'var(--sky-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Variation (CV)</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: analysis.cv < 50 ? 'var(--risk-low)' : analysis.cv < 80 ? 'var(--risk-medium)' : 'var(--risk-high)' }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: analysis.canIssueVerdict ? (analysis.cv < 50 ? 'var(--risk-low)' : analysis.cv < 80 ? 'var(--risk-medium)' : 'var(--risk-high)') : 'var(--risk-medium)' }}>
             {analysis.cv.toFixed(1)}%
           </div>
         </div>
       </div>
 
+      {analysis.statesExcluded > 0 && (
+        <div style={{ fontSize: 12, color: 'var(--sky-text-muted)', marginBottom: 16 }}>
+          {analysis.statesExcluded} low-volume state{analysis.statesExcluded > 1 ? 's' : ''} with fewer than {FAIRNESS_MIN_SUPPLIERS} suppliers are excluded from the bias verdict due to insufficient sample size.
+        </div>
+      )}
+
       {/* Fairness verdict */}
       <div style={{
         padding: '14px 16px',
         borderRadius: 10,
-        background: analysis.isFair
-          ? 'rgba(16, 185, 129, 0.08)'
-          : 'rgba(245, 158, 11, 0.08)',
-        border: `1px solid ${analysis.isFair ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`,
+        background: verdictBackground,
+        border: `1px solid ${verdictBorder}`,
         marginBottom: 16,
         display: 'flex',
         alignItems: 'flex-start',
         gap: 10,
       }}>
-        {analysis.isFair
+        {analysis.canIssueVerdict && analysis.isFair
           ? <CheckCircle2 size={18} color="var(--risk-low)" style={{ marginTop: 2, flexShrink: 0 }} />
-          : <AlertTriangle size={18} color="var(--risk-high)" style={{ marginTop: 2, flexShrink: 0 }} />
+          : <AlertTriangle size={18} color={verdictAccent} style={{ marginTop: 2, flexShrink: 0 }} />
         }
         <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-          {analysis.isFair ? (
+          {!analysis.canIssueVerdict ? (
+            <>
+              <strong style={{ color: verdictAccent }}>Fairness monitoring is active.</strong>{' '}
+              Supplier-level rates are being tracked, but only {analysis.statesAnalyzed} of {analysis.totalStates} state{analysis.totalStates > 1 ? 's' : ''} currently meet the minimum sample size needed for a formal verdict.
+              Low-volume states remain visible in the dashboard and stay outside the bias verdict until more supplier volume is available.
+            </>
+          ) : analysis.isFair ? (
             <>
               <strong style={{ color: 'var(--risk-low)' }}>No geographic bias detected.</strong>{' '}
-              Alert flagging rates are distributed proportionally across {analysis.statesAnalyzed} states. 
-              The coefficient of variation ({analysis.cv.toFixed(1)}%) indicates the scoring algorithm 
-              is not disproportionately targeting specific regions.
+              Supplier flagging rates remain well distributed across {analysis.statesAnalyzed} states with sufficient sample size.
+              The stabilized variation ({analysis.cv.toFixed(1)}%) stays within tolerance, and supplier-level counts prevent repeat alerts from overstating geographic concentration.
               {analysis.outliers.length > 0 && (
                 <span style={{ color: 'var(--sky-text-muted)' }}>
-                  {' '}({analysis.outliers.length} state{analysis.outliers.length > 1 ? 's' : ''} flagged as statistical outlier{analysis.outliers.length > 1 ? 's' : ''} — 
-                  driven by data density, not bias.)
+                  {' '}({analysis.outliers.length} state{analysis.outliers.length > 1 ? 's remain outside the normal range after stabilization and are being monitored separately' : ' remains outside the normal range after stabilization and is being monitored separately'}.)
                 </span>
               )}
             </>
           ) : (
             <>
               <strong style={{ color: 'var(--risk-high)' }}>Potential geographic disparity detected.</strong>{' '}
-              Flagging rates vary significantly across states (CV: {analysis.cv.toFixed(1)}%). 
-              {analysis.outliers.length} state{analysis.outliers.length > 1 ? 's show' : ' shows'} outlier flagging rates. 
+              Stabilized supplier flagging rates still vary materially across adequately sampled states (CV: {analysis.cv.toFixed(1)}%).
+              {analysis.outliers.length} state{analysis.outliers.length > 1 ? 's remain' : ' remains'} outside the expected range after low-volume suppression.
               Recommend reviewing peer group definitions and detection thresholds.
             </>
           )}
@@ -155,10 +140,10 @@ export default function FairnessPanel({ geoRisk = [] }) {
 
       {/* Top/Bottom flagging rates */}
       <div style={{ fontSize: 12, color: 'var(--sky-text-muted)', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-        Flagging Rate by State (Top 8)
+        Stabilized Supplier Flag Rate by State (Top 8)
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {analysis.flaggingRates.filter(r => r.alerts > 0).slice(0, 8).map(r => (
+        {analysis.flaggingRates.slice(0, 8).map(r => (
           <div key={r.state} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ minWidth: 28, fontWeight: 600, color: 'var(--sky-light)', fontSize: 12 }}>{r.state}</span>
             <div style={{
@@ -166,8 +151,8 @@ export default function FairnessPanel({ geoRisk = [] }) {
             }}>
               <div style={{
                 height: '100%',
-                width: `${Math.min(r.rate / (analysis.flaggingRates[0]?.rate || 1) * 100, 100)}%`,
-                background: r.rate > analysis.mean + 2 * analysis.stdDev
+                width: `${Math.min((r.smoothedRate / (topRate || 1)) * 100, 100)}%`,
+                background: outlierStates.has(r.state)
                   ? 'var(--risk-high)'
                   : 'var(--sky-blue)',
                 borderRadius: 3,
@@ -175,10 +160,10 @@ export default function FairnessPanel({ geoRisk = [] }) {
               }} />
             </div>
             <span style={{ minWidth: 50, textAlign: 'right', fontSize: 12, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-              {r.rate.toFixed(1)}%
+              {r.smoothedRate.toFixed(1)}%
             </span>
             <span style={{ minWidth: 60, textAlign: 'right', fontSize: 11, color: 'var(--sky-text-muted)' }}>
-              {r.alerts}/{r.suppliers}
+              {r.flaggedSuppliers}/{r.suppliers}
             </span>
           </div>
         ))}

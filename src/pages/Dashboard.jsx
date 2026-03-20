@@ -14,6 +14,7 @@ import {
 import USHeatmap from '../components/charts/USHeatmap'
 import FairnessPanel from '../components/charts/FairnessPanel'
 import { getEquipmentName, formatHCPCS, HCPCS_NAMES, US_STATES, RISK_DESCRIPTIONS, STATUS_INFO } from '../utils/hcpcs'
+import { getFlaggedSupplierCount, getSupplierFlagRate } from '../utils/geoRisk'
 
 // --- Custom AI Icons ---
 const CoreAiIcon = ({ size, color }) => (
@@ -176,7 +177,8 @@ function StateRiskTooltip({ active, payload, label }) {
   const avgRisk = data?.avg_risk || 0
   const alerts = data?.alert_count || 0
   const suppliers = data?.supplier_count || 0
-  const flagRate = suppliers > 0 ? ((alerts / suppliers) * 100).toFixed(1) : '0.0'
+  const flaggedSuppliers = getFlaggedSupplierCount(data)
+  const flagRate = getSupplierFlagRate(data).toFixed(1)
   const riskLevel = avgRisk >= 70 ? 'critical' : avgRisk >= 55 ? 'high' : avgRisk >= 40 ? 'medium' : 'low'
 
   return (
@@ -196,11 +198,15 @@ function StateRiskTooltip({ active, payload, label }) {
           <span style={{ color: '#EF4444', fontWeight: 600, fontSize: 13 }}>{alerts}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ ...ttLabel, marginBottom: 0 }}>Flagged Suppliers</span>
+          <span style={{ color: '#F59E0B', fontWeight: 600, fontSize: 13 }}>{flaggedSuppliers}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ ...ttLabel, marginBottom: 0 }}>Total Suppliers</span>
           <span style={{ color: '#F1F5F9', fontWeight: 600, fontSize: 13 }}>{suppliers}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ ...ttLabel, marginBottom: 0 }}>Flag Rate</span>
+          <span style={{ ...ttLabel, marginBottom: 0 }}>Supplier Flag Rate</span>
           <span style={{ color: parseFloat(flagRate) > 50 ? '#EF4444' : '#F59E0B', fontWeight: 700, fontSize: 13 }}>{flagRate}%</span>
         </div>
       </div>
