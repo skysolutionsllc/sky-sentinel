@@ -135,26 +135,17 @@ class OpenAIProvider(BaseLLMProvider):
             {"role": "system", "content": system},
             {"role": "user", "content": prompt}
         ]
-        # Try max_completion_tokens first (required by newer models like GPT-5.4),
-        # then fall back to max_tokens, then no limit at all.
-        for kwargs in [
-            {"max_completion_tokens": max_tokens},
-            {"max_tokens": max_tokens},
-            {},
-        ]:
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    **kwargs,
-                )
-                return response.choices[0].message.content
-            except Exception as e:
-                err = str(e)
-                if "max_tokens" in err or "max_completion_tokens" in err or "Unsupported parameter" in err:
-                    continue  # try next parameter variant
-                return f"[OpenAI LLM analysis unavailable: {err[:100]}]"
-        return "[OpenAI LLM analysis unavailable: could not determine supported token parameter]"
+        try:
+            # ChatGPT 5.4 Mini and all newer OpenAI models use max_completion_tokens
+            # (max_tokens is explicitly unsupported and returns a 400 error)
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_completion_tokens=max_tokens,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"[OpenAI LLM analysis unavailable: {str(e)[:100]}]"
 
     def analyze_supplier(self, supplier_data: dict, claims: list, peer_baseline: dict) -> str:
         system = (
