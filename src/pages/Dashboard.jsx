@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import {
@@ -223,7 +224,7 @@ function CellTooltip({ children, text }) {
       onMouseLeave={() => setShow(false)}
     >
       {children}
-      {show && (
+      {show && createPortal(
         <span style={{
           position: 'fixed',
           top: pos.y - 10,
@@ -243,7 +244,8 @@ function CellTooltip({ children, text }) {
           lineHeight: 1.4,
         }}>
           {text}
-        </span>
+        </span>,
+        document.body
       )}
     </span>
   )
@@ -477,7 +479,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── HCPCS Distribution ── */}
-        <div className="glass-card slide-up stagger-4">
+        <div className="glass-card slide-up stagger-4" style={{ display: 'flex', flexDirection: 'column' }}>
           <div className="chart-header">
             <div>
               <div className="chart-title flex-center gap-2">
@@ -487,8 +489,9 @@ export default function Dashboard() {
               <div className="chart-subtitle">HCPCS codes ranked by total billed amount — hover for equipment details</div>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={hcpcs.slice(0, 7)} layout="vertical">
+          <div style={{ flex: 1, minHeight: 240 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={hcpcs.slice(0, 7)} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(33,150,243,0.08)" />
               <XAxis type="number" tick={{ fill: '#94A3B8', fontSize: 11 }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
               <YAxis
@@ -505,6 +508,7 @@ export default function Dashboard() {
               <Bar dataKey="total_billed" fill="#2196F3" radius={[0, 6, 6, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </div>
 
         {/* ── Live Claims Feed ── */}
@@ -523,38 +527,40 @@ export default function Dashboard() {
           </div>
           {/* Column headers */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px',
+            display: 'grid', gridTemplateColumns: '40px 95px 70px 1fr 80px', alignItems: 'center', gap: 12, padding: '6px 14px',
             marginBottom: 4, fontSize: 10, fontWeight: 700, color: '#64748b',
             textTransform: 'uppercase', letterSpacing: '0.5px',
             borderBottom: '1px solid rgba(33,150,243,0.08)',
           }}>
-            <span style={{ width: 30 }}>
+            <span style={{ textAlign: 'center' }}>
               <CellTooltip text="Claim processing status: Clean, Flagged, Processing, or Pending">Status</CellTooltip>
             </span>
-            <span style={{ flex: '0 0 90px' }}>
+            <span>
               <CellTooltip text="National Provider Identifier — unique 10-digit ID assigned to each Medicare supplier">NPI</CellTooltip>
             </span>
-            <span style={{ flex: '0 0 70px' }}>
+            <span>
               <CellTooltip text="HCPCS Code — Healthcare Common Procedure Coding System code identifying the billed equipment">HCPCS</CellTooltip>
             </span>
-            <span style={{ flex: 1, textAlign: 'right' }}>
+            <span style={{ textAlign: 'right' }}>
               <CellTooltip text="Dollar amount billed to Medicare for this claim">Amount</CellTooltip>
             </span>
-            <span style={{ flex: '0 0 80px', textAlign: 'right' }}>
+            <span style={{ textAlign: 'right' }}>
               <CellTooltip text="Date the DME service was provided to the beneficiary">Date</CellTooltip>
             </span>
           </div>
           <div className="claims-feed">
             {claims.map((c, i) => (
               <div key={c.claim_id} className="claim-item" style={{ animationDelay: `${i * 60}ms` }}>
-                <CellTooltip text={STATUS_INFO[c.status]?.desc || 'Unknown status'}>
-                  <span className={`status-badge ${c.status}`} style={{ padding: '4px' }}>
-                    {c.status === 'clean' ? <CheckCircle2 size={14} /> :
-                     c.status === 'flagged' ? <XCircle size={14} /> :
-                     c.status === 'processing' ? <Hourglass size={14} /> :
-                     <PauseCircle size={14} />}
-                  </span>
-                </CellTooltip>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <CellTooltip text={STATUS_INFO[c.status]?.desc || 'Unknown status'}>
+                    <span className={`status-badge ${c.status}`} style={{ padding: '4px' }}>
+                      {c.status === 'clean' ? <CheckCircle2 size={14} /> :
+                       c.status === 'flagged' ? <XCircle size={14} /> :
+                       c.status === 'processing' ? <Hourglass size={14} /> :
+                       <PauseCircle size={14} />}
+                    </span>
+                  </CellTooltip>
+                </div>
                 <CellTooltip text={`NPI: ${c.supplier_npi || 'N/A'}\nNational Provider Identifier — click supplier page for full details`}>
                   <span className="claim-npi" style={{ cursor: 'pointer' }}
                         onClick={() => navigate(`/supplier/${c.supplier_npi}`)}>
@@ -564,10 +570,12 @@ export default function Dashboard() {
                 <CellTooltip text={formatHCPCS(c.hcpcs_code)}>
                   <span className="claim-hcpcs">{c.hcpcs_code}</span>
                 </CellTooltip>
-                <CellTooltip text={`Billed: $${Number(c.billed_amount).toLocaleString()}\nAmount billed to Medicare for this DME item`}>
-                  <span className="claim-amount">${Number(c.billed_amount).toLocaleString()}</span>
-                </CellTooltip>
-                <span className="claim-time">
+                <div style={{ textAlign: 'right' }}>
+                  <CellTooltip text={`Billed: $${Number(c.billed_amount).toLocaleString()}\nAmount billed to Medicare for this DME item`}>
+                    <span className="claim-amount">${Number(c.billed_amount).toLocaleString()}</span>
+                  </CellTooltip>
+                </div>
+                <span className="claim-time" style={{ textAlign: 'right' }}>
                   {c.service_date ? new Date(c.service_date).toLocaleDateString() : ''}
                 </span>
               </div>

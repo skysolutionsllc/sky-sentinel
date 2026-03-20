@@ -443,7 +443,8 @@ a { color: inherit; text-decoration: none; }
 }
 
 .claim-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: 40px 95px 70px 1fr 80px;
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
@@ -457,26 +458,21 @@ a { color: inherit; text-decoration: none; }
 .claim-item .claim-npi {
   font-weight: 600;
   color: var(--sky-light);
-  min-width: 90px;
 }
 
 .claim-item .claim-hcpcs {
   font-family: 'Inter', monospace;
   color: var(--sky-text-secondary);
-  min-width: 60px;
 }
 
 .claim-item .claim-amount {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  min-width: 80px;
-  text-align: right;
 }
 
 .claim-item .claim-time {
   color: var(--sky-text-muted);
   font-size: 11px;
-  margin-left: auto;
 }
 
 @keyframes slideInClaim {

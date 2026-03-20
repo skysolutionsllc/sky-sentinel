@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
@@ -8,6 +8,7 @@ export default function Clusters() {
   const [data, setData] = useState(null)
   const [selected, setSelected] = useState(null)
   const navigate = useNavigate()
+  const cardRefs = useRef({})
 
   useEffect(() => {
     api.clusters().then(setData).catch(console.error)
@@ -16,6 +17,16 @@ export default function Clusters() {
   if (!data) return <div className="loading-container"><div className="spinner" /></div>
 
   const clusters = data.clusters || []
+
+  const handleGraphClusterClick = (clusterId) => {
+    setSelected(clusterId)
+    const el = cardRefs.current[clusterId]
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.style.boxShadow = '0 0 30px rgba(33,150,243,0.4), 0 0 60px rgba(33,150,243,0.15)'
+      setTimeout(() => { el.style.boxShadow = '' }, 1500)
+    }
+  }
 
   return (
     <div className="animate-in">
@@ -27,6 +38,72 @@ export default function Clusters() {
         <p>Coordinated multi-supplier patterns — what traditional detection systems miss</p>
       </div>
 
+      {/* Network Visualization — at the top */}
+      {clusters.length > 0 && (
+        <div className="glass-card slide-up" style={{ marginBottom: 24 }}>
+          <div className="chart-header">
+            <div>
+              <div className="chart-title flex-center gap-2">
+                <Link size={18} /> Cluster Network Graph
+              </div>
+              <div className="chart-subtitle">Click any cluster hub to jump to its details below</div>
+            </div>
+          </div>
+          <div style={{ position: 'relative', height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', overflowX: 'auto' }}>
+            <svg width="100%" height="280" viewBox={`0 0 ${Math.max(800, clusters.length * 180 + 100)} 280`} style={{ minWidth: Math.max(800, clusters.length * 180 + 100) }}>
+              {clusters.map((c, ci) => {
+                const totalWidth = Math.max(800, clusters.length * 180 + 100)
+                const cx = (totalWidth / (clusters.length + 1)) * (ci + 1)
+                const cy = 140
+                return (
+                  <g key={c.cluster_id}>
+                    {/* Hub — clickable */}
+                    <circle
+                      cx={cx} cy={cy} r={30}
+                      fill="rgba(33,150,243,0.15)" stroke="#2196F3" strokeWidth={2}
+                      style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                      onClick={() => handleGraphClusterClick(c.cluster_id)}
+                      onMouseEnter={(e) => { e.target.setAttribute('r', '34'); e.target.setAttribute('stroke-width', '3') }}
+                      onMouseLeave={(e) => { e.target.setAttribute('r', '30'); e.target.setAttribute('stroke-width', '2') }}
+                    />
+                    <text
+                      x={cx} y={cy + 4} textAnchor="middle" fill="#F1F5F9" fontSize={11} fontWeight={600}
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      C{c.cluster_id + 1}
+                    </text>
+                    {/* Member count label */}
+                    <text
+                      x={cx} y={cy + 48} textAnchor="middle" fill="#64748b" fontSize={10}
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      {c.member_count} suppliers
+                    </text>
+                    {/* Spokes */}
+                    {c.members?.slice(0, 6).map((m, mi) => {
+                      const angle = (mi / Math.min(c.members.length, 6)) * Math.PI * 2 - Math.PI / 2
+                      const mx = cx + Math.cos(angle) * 80
+                      const my = cy + Math.sin(angle) * 80
+                      const color = m.risk_score >= 80 ? '#EF4444' : m.risk_score >= 60 ? '#F59E0B' : '#3B82F6'
+                      return (
+                        <g key={m.npi} style={{ cursor: 'pointer' }} onClick={() => navigate(`/supplier/${m.npi}`)}>
+                          <line x1={cx} y1={cy} x2={mx} y2={my} stroke="rgba(33,150,243,0.2)" strokeWidth={1} />
+                          <circle cx={mx} cy={my} r={16} fill="rgba(15,40,71,0.8)" stroke={color} strokeWidth={1.5} />
+                          <text x={mx} y={my + 4} textAnchor="middle" fill={color} fontSize={9} fontWeight={700}>
+                            {Math.round(m.risk_score)}
+                          </text>
+                        </g>
+                      )
+                    })}
+                  </g>
+                )
+              })}
+            </svg>
+          </div>
+        </div>
+      )}
+
+      {/* Cluster Cards */}
       {clusters.length === 0 ? (
         <div className="glass-card flex-center flex-column" style={{ textAlign: 'center', padding: 60, flexDirection: 'column' }}>
           <div style={{ marginBottom: 16 }}><Search size={48} color="var(--sky-text-muted)" /></div>
@@ -40,8 +117,9 @@ export default function Clusters() {
           {clusters.map((c, i) => (
             <div
               key={c.cluster_id}
+              ref={(el) => { cardRefs.current[c.cluster_id] = el }}
               className="cluster-card slide-up"
-              style={{ animationDelay: `${i * 80}ms` }}
+              style={{ animationDelay: `${i * 80}ms`, transition: 'box-shadow 0.4s ease' }}
               onClick={() => setSelected(selected === c.cluster_id ? null : c.cluster_id)}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 12 }}>
@@ -115,52 +193,6 @@ export default function Clusters() {
           ))}
         </div>
       )}
-
-      {/* Network Visualization */}
-      <div className="glass-card" style={{ marginTop: 24 }}>
-        <div className="chart-header">
-          <div>
-            <div className="chart-title flex-center gap-2">
-              <Link size={18} /> Cluster Network Graph
-            </div>
-            <div className="chart-subtitle">Visual representation of supplier coordination patterns</div>
-          </div>
-        </div>
-        <div style={{ position: 'relative', height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', overflowX: 'auto' }}>
-          <svg width="100%" height="280" viewBox={`0 0 ${Math.max(800, clusters.length * 180 + 100)} 280`} style={{ minWidth: Math.max(800, clusters.length * 180 + 100) }}>
-            {clusters.map((c, ci) => {
-              const totalWidth = Math.max(800, clusters.length * 180 + 100)
-              const cx = (totalWidth / (clusters.length + 1)) * (ci + 1)
-              const cy = 140
-              return (
-                <g key={c.cluster_id}>
-                  {/* Hub */}
-                  <circle cx={cx} cy={cy} r={30} fill="rgba(33,150,243,0.15)" stroke="#2196F3" strokeWidth={2} />
-                  <text x={cx} y={cy + 4} textAnchor="middle" fill="#F1F5F9" fontSize={11} fontWeight={600}>
-                    C{c.cluster_id + 1}
-                  </text>
-                  {/* Spokes */}
-                  {c.members?.slice(0, 6).map((m, mi) => {
-                    const angle = (mi / Math.min(c.members.length, 6)) * Math.PI * 2 - Math.PI / 2
-                    const mx = cx + Math.cos(angle) * 80
-                    const my = cy + Math.sin(angle) * 80
-                    const color = m.risk_score >= 80 ? '#EF4444' : m.risk_score >= 60 ? '#F59E0B' : '#3B82F6'
-                    return (
-                      <g key={m.npi}>
-                        <line x1={cx} y1={cy} x2={mx} y2={my} stroke="rgba(33,150,243,0.2)" strokeWidth={1} />
-                        <circle cx={mx} cy={my} r={16} fill="rgba(15,40,71,0.8)" stroke={color} strokeWidth={1.5} />
-                        <text x={mx} y={my + 4} textAnchor="middle" fill={color} fontSize={9} fontWeight={700}>
-                          {Math.round(m.risk_score)}
-                        </text>
-                      </g>
-                    )
-                  })}
-                </g>
-              )
-            })}
-          </svg>
-        </div>
-      </div>
 
       {/* How DBSCAN Works */}
       <div className="glass-card" style={{ marginTop: 24 }}>
