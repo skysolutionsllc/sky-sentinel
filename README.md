@@ -17,7 +17,7 @@
   <img src="https://img.shields.io/badge/Python-3.11+-blue?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React">
   <img src="https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white" alt="FastAPI">
-  <img src="https://img.shields.io/badge/OpenAI-GPT--4.1-412991?logo=openai&logoColor=white" alt="OpenAI">
+  <img src="https://img.shields.io/badge/OpenAI-ChatGPT_5.4_Mini-412991?logo=openai&logoColor=white" alt="OpenAI">
   <img src="https://img.shields.io/badge/CMS_Data-Live_API-FF6B35" alt="CMS Data">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
 </p>
@@ -55,6 +55,7 @@
 - [Judging Criteria Alignment](#judging-criteria-alignment)
 - [Path to CMS Pilot](#path-to-cms-pilot)
 - [Future Roadmap](#future-roadmap)
+- [How We Built This: AI-Powered Development](#how-we-built-this-ai-powered-development)
 - [Team](#team)
 - [Repository Structure](#repository-structure)
 - [Acknowledgments](#acknowledgments)
@@ -133,8 +134,10 @@ Following the same architecture used by IBM's watsonx fraud detection, Sky Senti
 
 | Stage | Model Type | Role | Speed | Cost |
 |---|---|---|---|---|
-| **Stage 1: Classification** | Encoder-style (batch tier — ChatGPT 5.4 Mini) | Rapid scoring, pattern classification, structured risk assessment during data ingestion | Fast | Low |
-| **Stage 2: Reasoning** | Decoder (ChatGPT 5.4 Mini) | Human-readable narrative explanations, investigator Q&A, contextual analysis | Deliberate | Premium |
+| **Stage 1: Classification** | Encoder-style (batch tier) | Rapid scoring, pattern classification, structured risk assessment during data ingestion | Fast | Low |
+| **Stage 2: Reasoning** | Decoder (interactive tier) | Human-readable narrative explanations, investigator Q&A, contextual analysis | Deliberate | Premium |
+
+> **Hackathon note:** In this MVP, both tiers use **ChatGPT 5.4 Mini** for simplicity. The architecture is designed so the batch tier can be swapped for purpose-built encoder models (BERT/RoBERTa) in production — no code changes needed, just update `.env`.
 
 > **Why two stages?** In production, Stage 1 would use purpose-built encoder models (BERT/RoBERTa) for sub-millisecond classification. In this demo, we use ChatGPT 5.4 Mini as a lightweight classification proxy. The key architectural insight — borrowed from IBM's ensemble approach — is that **you don't need expensive reasoning for every operation**, only for the cases that require human-readable explanation.
 
@@ -146,7 +149,7 @@ This narrative identifies **specific HCPCS codes and dollar amounts**, connects 
 ### 3. Human-in-the-Loop Investigation
 
 Investigators don't just review alerts — they **shape the detection**:
-- Adjust anomaly sensitivity across 7 dimensions with interactive sliders
+- Adjust anomaly sensitivity across 6 scoring dimensions with interactive sliders, plus a risk threshold cutoff
 - Define custom detection patterns ("show me new FL suppliers billing >2x peer average for power wheelchairs")
 - Test pattern hypotheses against the live dataset before committing changes
 - All decisions are logged with timestamps for audit compliance
@@ -276,7 +279,7 @@ Reveals what traditional detection completely misses: **behaviorally similar sup
 | Feature | Detail |
 |---|---|
 | **Cluster Cards** | Member count, collective risk score, shared attributes, geographic footprint |
-| **Network Graph** | Interactive D3.js SVG visualization showing connections between cluster members, with node sizing by risk score |
+| **Network Graph** | Interactive SVG network visualization showing connections between cluster members, with node coloring by risk score |
 | **Shared Attributes Panel** | Behavioral similarities: overlapping HCPCS categories, synchronized growth, geographic clustering, similar incorporation timelines |
 | **LLM Cluster Narrative** | AI-generated explanation of why the group appears coordinated and what investigation angles to pursue |
 | **Member Drill-Down** | Click any cluster member to navigate to their individual Supplier Detail view |
@@ -295,7 +298,7 @@ Where Sky Sentinel's **Human-in-the-Loop philosophy** comes to life. Investigato
 
 | Control | Function |
 |---|---|
-| **7-Dimension Threshold Sliders** | Adjustable sensitivity for: Billing Volume vs. Peers, Growth Rate, HCPCS Concentration, Geographic Spread, New Supplier Weight, Cluster Association, AI Confidence — each slider updates the alert population in real-time |
+| **6-Dimension Threshold Sliders + Risk Cutoff** | Adjustable sensitivity for: Billing Volume vs. Peers, Growth Rate, HCPCS Concentration, Geographic Spread, LLM Contextual Weight, Cluster Association — plus a risk threshold cutoff. Each slider updates the alert population in real-time |
 | **Pattern Builder** | Define custom detection patterns in natural language: "Show me DME suppliers in Florida incorporated in the last 12 months billing more than 2x peer average for power wheelchairs" |
 | **Hypothesis Tester** | Test pattern definitions against the live dataset to preview results before committing |
 | **Saved Patterns** | Store and retrieve investigator-defined patterns for reuse and team sharing |
@@ -422,10 +425,10 @@ IsolationForest(n_estimators=100, contamination=0.10, random_state=42)
 
 **How it works in Sky Sentinel:**
 ```python
-DBSCAN(eps=1.2, min_samples=3)
+DBSCAN(eps=0.8, min_samples=2)
 ```
-- **eps=1.2** — two suppliers are considered "neighbors" if their standardized feature distance is less than 1.2
-- **min_samples=3** — a cluster must have at least 3 suppliers
+- **eps=0.8** — two suppliers are considered "neighbors" if their standardized feature distance is less than 0.8 standard deviations
+- **min_samples=2** — a cluster must have at least 2 suppliers
 
 The algorithm operates on standardized behavioral features: billing volume, growth rate, HCPCS mix, geographic footprint, and enrollment timing. Suppliers that are close together in this multi-dimensional feature space get grouped into clusters.
 
@@ -482,10 +485,10 @@ Sky Sentinel implements **intelligent three-tier model routing** — following t
 **Configuration via `.env`:**
 ```bash
 LLM_MODEL_BATCH=chatgpt-5.4-mini          # Encoder-proxy / classification tier
-LLM_MODEL_INTERACTIVE=chatchatgpt-5.4-mini         # Decoder / reasoning tier
+LLM_MODEL_INTERACTIVE=chatgpt-5.4-mini     # Decoder / reasoning tier
 ```
 
-**Why this matters:** Running 47 full narrative assessments during seeding with ChatGPT 5.4 Mini costs ~$1.00 and takes ~3 minutes. Switching to ChatGPT 5.4 Mini for batch operations reduces this to ~$0.08 and ~30 seconds — while keeping the premium model available for the features users actually interact with.
+**Why this matters:** In the hackathon MVP, both tiers use ChatGPT 5.4 Mini for simplicity. In production, the batch tier would use purpose-built encoder models (BERT/RoBERTa) for sub-millisecond classification at ~$0.08 per run, while the interactive tier would use a premium reasoning model for the depth and nuance that user-facing features demand. The architecture already supports swapping models per tier via `.env` — no code changes required.
 
 The system supports **swappable LLM providers** (OpenAI, Anthropic, Local/Ollama) configurable through both environment variables and the in-app Settings page, ensuring vendor flexibility for government deployments.
 
@@ -544,7 +547,7 @@ The system supports **swappable LLM providers** (OpenAI, Anthropic, Local/Ollama
 |---|---|
 | **Single SPA** | Consolidated into one unified dashboard for seamless investigator workflow |
 | **SQLite over PostgreSQL** | Zero-config portability — judges can clone and run immediately without database setup. SQLAlchemy ORM provides a clean migration path to PostgreSQL for production |
-| **Multi-model LLM routing** | Batch tier (ChatGPT 5.4 Mini) for cost-efficient seeding; Interactive tier (ChatGPT 5.4 Mini) for premium user-facing reasoning |
+| **Multi-model LLM routing** | Two-tier architecture (batch + interactive) — both use ChatGPT 5.4 Mini in hackathon MVP; designed to swap batch tier for encoder models (BERT/RoBERTa) in production |
 | **Swappable LLM adapter** | Abstract `BaseLLMProvider` interface with `OpenAIProvider`, `AnthropicProvider`, `LocalProvider`, and `MockLLMProvider` fallback — if the API is unavailable during demo, the system gracefully falls back to pre-generated narratives |
 | **Real CMS data + synthetic fraud** | Real supplier data provides authenticity; synthetic fraud scenarios ensure compelling demo stories |
 | **Two-tier model routing** | Optimizes API cost and latency without sacrificing interactive quality |
@@ -711,7 +714,7 @@ Every alert is based on **clearly defined, reviewable, and adjustable criteria**
 
 | Criterion | How It's Documented | Where to See It |
 |---|---|---|
-| **Billing anomaly types** | 6 named scoring factors: Billing Volume vs. Peers, Growth Rate, HCPCS Concentration, Geographic Spread, New Supplier Weight, Cluster Association | Supplier Detail → Risk Factor Breakdown |
+| **Billing anomaly types** | 6 named scoring factors: Billing Volume vs. Peers, Growth Rate, HCPCS Concentration, Geographic Spread, LLM Contextual Findings, Cluster Association | Supplier Detail → Risk Factor Breakdown |
 | **Threshold levels** | Each factor's sensitivity is controlled by a named slider (0–100 scale). Default weights are documented in `anomaly_detection.py` | Investigation Controls page |
 | **Peer comparison method** | Z-score analysis against state-level peer groups — deviation measured in standard deviations from the peer mean | AI/ML Pipeline → Layer 1: Statistical Anomaly Detection |
 | **Combined score formula** | Weighted composite of Isolation Forest anomaly score, Z-score deviation, DBSCAN cluster membership, and LLM confidence | Composite Risk Scoring section (README) |
@@ -742,7 +745,7 @@ Healthcare delivery varies widely — unusual billing may reflect specialty prac
 | **Ensemble consensus** | A supplier must score high across *multiple* detection methods (Isolation Forest + Z-Score + DBSCAN) to receive a critical rating — a single outlier metric alone won't trigger a top-level alert |
 | **Human review gates** | No automated enforcement: every alert requires an investigator to choose **Escalate**, **Monitor**, or **Dismiss** before any action is taken |
 | **Dismiss workflow** | Investigators can mark alerts as false positives with a logged dismissal reason, preventing re-escalation |
-| **Adjustable sensitivity** | 7-dimension threshold sliders let investigators reduce sensitivity on factors that may produce false positives in their specific investigation context |
+| **Adjustable sensitivity** | 6-dimension threshold sliders plus a risk cutoff let investigators reduce sensitivity on factors that may produce false positives in their specific investigation context |
 | **Geographic fairness monitoring** | The Fairness & Bias Review panel tracks alert distributions across states, surfacing any disproportionate regional concentration |
 
 ---
@@ -750,7 +753,7 @@ Healthcare delivery varies widely — unusual billing may reflect specialty prac
 ## Demo Walkthrough (5 Minutes)
 
 ### Act 1: "The Dashboard" (30 seconds)
-> *"Every day, CMS processes millions of Medicare claims. Sky Sentinel monitors 336 DME suppliers in real-time, scoring each one using an Ensemble AI pipeline — three complementary detection algorithms plus a two-stage LLM pipeline for contextual analysis. This is the same multi-model ensemble architecture used by IBM's enterprise fraud detection systems."*
+> *"Every day, CMS processes millions of Medicare claims. Sky Sentinel monitors 347 DME suppliers in real-time, scoring each one using an Ensemble AI pipeline — three complementary detection algorithms plus a two-stage LLM pipeline for contextual analysis. This is the same multi-model ensemble architecture used by IBM's enterprise fraud detection systems."*
 
 - Show the Dashboard with the AI Approach banner explaining the 4 pillars
 - Point out the US Risk Heatmap and Fairness panel
@@ -830,7 +833,7 @@ cp .env.example .env
 # Edit .env and add your OpenAI API key (optional)
 # Configure two-tier model routing:
 #   LLM_MODEL_BATCH=chatgpt-5.4-mini
-#   LLM_MODEL_INTERACTIVE=chatchatgpt-5.4-mini
+#   LLM_MODEL_INTERACTIVE=chatgpt-5.4-mini
 ```
 
 ### 3. Install Dependencies
@@ -852,7 +855,7 @@ python3 -m backend.data.seed_data
 This will:
 - Fetch **300 real DME suppliers** from the CMS Medicare API
 - Generate **47 synthetic fraud suppliers** (15 individual shell companies + 32 in 6 coordinated clusters) — modeled on Operation Gold Rush
-- Create **~4,600 claims** with realistic HCPCS codes
+- Create **~5,500 claims** with realistic HCPCS codes
 - Run the full anomaly detection pipeline (Isolation Forest + Z-Score + DBSCAN)
 - Generate **AI-powered alerts** with LLM narratives for high-risk suppliers (using the batch model tier)
 
@@ -941,7 +944,8 @@ On first boot the entrypoint automatically creates tables and seeds the database
 | **Build Tool** | Vite | 6.4 | Fast dev server with hot module replacement |
 | **Charts** | Recharts | 2.15 | Dashboard visualizations (area, bar, pie, line charts) |
 | **Maps** | react-simple-maps | 3.0 | Geographic risk heatmap (US choropleth) |
-| **Network Graphs** | D3.js | 7.9 | Cluster network visualization |
+| **Network Graphs** | SVG (vanilla) | — | Cluster network visualization |
+| **Color Scales** | d3-scale-chromatic | 3.1 | Geographic heatmap color gradients |
 | **Markdown** | react-markdown | 9.0 | AI narrative rendering |
 | **Styling** | Vanilla CSS | — | Custom glassmorphism design system with CSS variables |
 | **Backend** | FastAPI | 0.115 | Async Python REST API framework |
@@ -949,7 +953,7 @@ On first boot the entrypoint automatically creates tables and seeds the database
 | **Database** | SQLite | 3.x | Zero-config portable database |
 | **ML** | scikit-learn | 1.6 | Isolation Forest, DBSCAN, StandardScaler |
 | **Data** | Pandas + NumPy | — | Data processing and feature engineering |
-| **LLM** | OpenAI GPT | ChatGPT 5.4 Mini + ChatGPT 5.4 Mini | Multi-tier contextual analysis and narrative generation |
+| **LLM** | OpenAI GPT | ChatGPT 5.4 Mini | Multi-tier contextual analysis and narrative generation |
 | **HTTP Client** | HTTPX | — | Async CMS API data fetching |
 
 ---
@@ -975,7 +979,7 @@ Sky Sentinel is architecturally designed for progression from hackathon MVP to p
 - ✅ Ensemble AI anomaly detection (Isolation Forest + Z-Score + DBSCAN composite scoring)
 - ✅ Cross-NPI cluster detection via DBSCAN
 - ✅ Two-stage LLM pipeline: batch classification (ChatGPT 5.4 Mini) + interactive reasoning (ChatGPT 5.4 Mini)
-- ✅ Human-in-the-Loop investigation controls with 7-dimension threshold tuning
+- ✅ Human-in-the-Loop investigation controls with 6-dimension threshold tuning + risk cutoff
 - ✅ Live CMS Medicare DME Supplier API integration (300+ real suppliers)
 - ✅ Natural language AI query interface
 - ✅ Fairness & bias monitoring
@@ -1014,6 +1018,44 @@ Beyond the CMS pilot path, Sky Sentinel's architecture supports expansion to:
 - **Commercial insurance** — Private payers face similar DME fraud challenges
 
 ---
+
+## How We Built This: AI-Powered Development
+
+Sky Sentinel wasn't built using a traditional software development lifecycle. **We used AI at every stage of development** — the same philosophy we applied to the product itself (AI augmenting human expertise) was applied to how we built it.
+
+### AI Tools Used
+
+| Tool | Role in Development |
+|---|---|
+| **Google Gemini** (Antigravity / AI Coding Agent) | Primary development partner — architecture design, full-stack code generation, iterative debugging, code review, and codebase refactoring. Gemini served as a tireless pair programmer across the entire 15,000+ line codebase |
+| **OpenAI ChatGPT 5.4 Mini** | Powers the production LLM features — supplier risk narratives, cluster analysis, natural language queries, and text similarity detection |
+| **Claude** (Anthropic) | Alternative LLM provider supported in the platform; used for research and architectural reasoning during planning |
+
+### Our Approach: AI-First, Not Waterfall
+
+Traditional hackathon teams follow a compressed version of SDLC — requirements → design → assign tasks → develop → test → integrate. With a 5-person team and 10 days, that approach would have produced a narrower, less polished product.
+
+**Instead, we took an AI-first approach:**
+
+1. **Product vision + AI execution** — The Product Owner defined what investigators need. The AI coding agent turned those requirements into working code in real-time — no handoff delays, no sprint planning, no task tickets. The human focused on *what to build* and *why*; the AI handled *how to build it*.
+
+2. **Iterative refinement over waterfall phases** — Instead of sequential design → build → test, we ran hundreds of rapid feedback loops: describe a feature → generate code → review → refine → ship. Each cycle took minutes, not days.
+
+3. **Full-stack AI pair programming** — The AI agent wrote Python backend code, React frontend components, SQL models, CSS design systems, API integrations, and documentation — all within the same conversation context. This eliminated the traditional bottleneck of context-switching between specialists.
+
+4. **Deep research on demand** — When we needed to understand CMS data schemas, DOJ enforcement patterns (Operation Gold Rush), or IBM's fraud detection architecture (FAMS), the AI performed rapid deep research and synthesized findings into actionable design decisions — work that would traditionally require days of manual research.
+
+### What This Enabled
+
+- **15,000+ lines of production-quality code** across a full-stack application (React 19, FastAPI, SQLAlchemy, scikit-learn, OpenAI integration)
+- **7 interconnected application pages** with a cohesive glassmorphism design system
+- **3 ML algorithms** (Isolation Forest, Z-Score, DBSCAN) with a composite scoring pipeline
+- **Multi-model LLM integration** with 4 providers (OpenAI, Anthropic, Local/Ollama, Mock fallback)
+- **Live CMS API integration** with real Medicare supplier data
+- **Docker deployment** with single-container production builds
+- **Comprehensive documentation** (this README: 1,100+ lines)
+
+> **The meta-story:** Sky Sentinel demonstrates that AI isn't just a product feature — it's a force multiplier for the entire development process. The same principle we're proposing for CMS fraud investigators (AI amplifies human expertise) is exactly how we built this platform.
 
 ## Team
 
@@ -1055,7 +1097,7 @@ sky-sentinel/
 │       ├── Dashboard.jsx              # Command center + AI approach banner
 │       ├── Alerts.jsx                 # Alert rankings with diversified evidence
 │       ├── SupplierDetail.jsx         # Investigator deep dive + LLM narrative
-│       ├── Clusters.jsx               # Network detection + D3 graph
+│       ├── Clusters.jsx               # Network detection + SVG graph
 │       ├── Investigation.jsx          # HITL controls + pattern builder
 │       ├── AIQuery.jsx                # Natural language queries
 │       └── Settings.jsx              # LLM provider/model configuration
