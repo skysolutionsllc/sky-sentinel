@@ -49,52 +49,91 @@ export default function Clusters() {
               <div className="chart-subtitle">Click any cluster hub to jump to its details below</div>
             </div>
           </div>
-          <div style={{ position: 'relative', height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', overflowX: 'auto' }}>
-            <svg width="100%" height="280" viewBox={`0 0 ${Math.max(800, clusters.length * 180 + 100)} 280`} style={{ minWidth: Math.max(800, clusters.length * 180 + 100) }}>
+          <div style={{ position: 'relative', height: 350, display: 'flex', alignItems: 'center', justifyContent: 'center', overflowX: 'auto', background: 'radial-gradient(circle at center, rgba(33,150,243,0.05) 0%, transparent 70%)' }}>
+            <svg width="100%" height="320" viewBox={`0 0 ${Math.max(800, clusters.length * 180 + 100)} 320`} style={{ minWidth: Math.max(800, clusters.length * 180 + 100) }}>
+              <defs>
+                <filter id="glow-critical" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                  <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <filter id="glow-high" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                  <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <filter id="glow-hub" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+                  <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              
+              {/* Transnational Network Path connecting all hubs */}
+              {clusters.length > 1 && (
+                <path
+                  d={clusters.map((c, ci) => {
+                    const totalWidth = Math.max(800, clusters.length * 180 + 100)
+                    const cx = (totalWidth / (clusters.length + 1)) * (ci + 1)
+                    return `${ci === 0 ? 'M' : 'L'} ${cx} 160`
+                  }).join(' ')}
+                  stroke="rgba(33, 150, 243, 0.15)"
+                  strokeWidth="3"
+                  strokeDasharray="6 6"
+                  fill="none"
+                />
+              )}
+
               {clusters.map((c, ci) => {
                 const totalWidth = Math.max(800, clusters.length * 180 + 100)
                 const cx = (totalWidth / (clusters.length + 1)) * (ci + 1)
-                const cy = 140
+                const cy = 160
                 return (
                   <g key={c.cluster_id}>
-                    {/* Hub — clickable */}
-                    <circle
-                      cx={cx} cy={cy} r={30}
-                      fill="rgba(33,150,243,0.15)" stroke="#2196F3" strokeWidth={2}
-                      style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
-                      onClick={() => handleGraphClusterClick(c.cluster_id)}
-                      onMouseEnter={(e) => { e.target.setAttribute('r', '34'); e.target.setAttribute('stroke-width', '3') }}
-                      onMouseLeave={(e) => { e.target.setAttribute('r', '30'); e.target.setAttribute('stroke-width', '2') }}
-                    />
-                    <text
-                      x={cx} y={cy + 4} textAnchor="middle" fill="#F1F5F9" fontSize={11} fontWeight={600}
-                      style={{ pointerEvents: 'none' }}
-                    >
-                      C{c.cluster_id + 1}
-                    </text>
-                    {/* Member count label */}
-                    <text
-                      x={cx} y={cy + 48} textAnchor="middle" fill="#64748b" fontSize={10}
-                      style={{ pointerEvents: 'none' }}
-                    >
-                      {c.member_count} suppliers
-                    </text>
+                    {/* Pulsing Aura */}
+                    <circle cx={cx} cy={cy} r={38} fill="none" stroke="#2196F3" strokeWidth="1.5">
+                      <animate attributeName="r" values="38; 55; 38" dur="4s" repeatCount="indefinite" />
+                      <animate attributeName="opacity" values="0.8; 0; 0.8" dur="4s" repeatCount="indefinite" />
+                    </circle>
+                    <circle cx={cx} cy={cy} r={32} fill="none" stroke="#2196F3" strokeWidth="0.5">
+                      <animate attributeName="r" values="32; 45; 32" dur="3s" repeatCount="indefinite" />
+                      <animate attributeName="opacity" values="0.5; 0; 0.5" dur="3s" repeatCount="indefinite" />
+                    </circle>
+
                     {/* Spokes */}
-                    {c.members?.slice(0, 6).map((m, mi) => {
-                      const angle = (mi / Math.min(c.members.length, 6)) * Math.PI * 2 - Math.PI / 2
-                      const mx = cx + Math.cos(angle) * 80
-                      const my = cy + Math.sin(angle) * 80
-                      const color = m.risk_score >= 80 ? '#EF4444' : m.risk_score >= 60 ? '#F59E0B' : '#3B82F6'
+                    {c.members?.slice(0, 8).map((m, mi) => {
+                      const angle = (mi / Math.min(c.members.length, 8)) * Math.PI * 2 - Math.PI / 2
+                      const mx = cx + Math.cos(angle) * 90
+                      const my = cy + Math.sin(angle) * 90
+                      const isCritical = m.risk_score >= 80
+                      const isHigh = m.risk_score >= 60
+                      const color = isCritical ? '#EF4444' : isHigh ? '#F59E0B' : '#3B82F6'
+                      const filter = isCritical ? 'url(#glow-critical)' : isHigh ? 'url(#glow-high)' : ''
                       return (
-                        <g key={m.npi} style={{ cursor: 'pointer' }} onClick={() => navigate(`/supplier/${m.npi}`)}>
-                          <line x1={cx} y1={cy} x2={mx} y2={my} stroke="rgba(33,150,243,0.2)" strokeWidth={1} />
-                          <circle cx={mx} cy={my} r={16} fill="rgba(15,40,71,0.8)" stroke={color} strokeWidth={1.5} />
-                          <text x={mx} y={my + 4} textAnchor="middle" fill={color} fontSize={9} fontWeight={700}>
+                        <g key={m.npi} style={{ cursor: 'pointer', transition: 'transform 0.2s', transformOrigin: `${mx}px ${my}px` }} onClick={() => navigate(`/supplier/${m.npi}`)} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                          <line x1={cx} y1={cy} x2={mx} y2={my} stroke={color} strokeOpacity="0.3" strokeWidth="1.5" />
+                          <circle cx={mx} cy={my} r={18} fill="rgba(10,22,40,0.9)" stroke={color} strokeWidth="2" filter={filter} />
+                          <circle cx={mx} cy={my} r={4} fill={color} />
+                          <text x={mx} y={my + 28} textAnchor="middle" fill={color} fontSize={10} fontWeight={700} filter={filter}>
                             {Math.round(m.risk_score)}
                           </text>
                         </g>
                       )
                     })}
+
+                    {/* Hub Core — clickable */}
+                    <circle
+                      cx={cx} cy={cy} r={30}
+                      fill="rgba(10,22,40,0.95)" stroke="#2196F3" strokeWidth="2.5"
+                      filter="url(#glow-hub)"
+                      style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                      onClick={() => handleGraphClusterClick(c.cluster_id)}
+                      onMouseEnter={(e) => { e.target.setAttribute('r', '34'); e.target.setAttribute('stroke-width', '3.5') }}
+                      onMouseLeave={(e) => { e.target.setAttribute('r', '30'); e.target.setAttribute('stroke-width', '2.5') }}
+                    />
+                    <text x={cx} y={cy + 4} textAnchor="middle" fill="#F1F5F9" fontSize={12} fontWeight={700} style={{ pointerEvents: 'none' }}>
+                      C{c.cluster_id + 1}
+                    </text>
+                    <text x={cx} y={cy + 52} textAnchor="middle" fill="#94A3B8" fontSize={11} fontWeight={500} style={{ pointerEvents: 'none' }}>
+                      {c.member_count} nodes
+                    </text>
                   </g>
                 )
               })}
