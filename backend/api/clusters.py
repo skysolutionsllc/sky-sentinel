@@ -37,13 +37,18 @@ def list_clusters(db: Session = Depends(get_db)):
         first_cluster = members[0][0]
         shared = first_cluster.shared_attributes or {}
 
-        # Get the cluster-level alert if exists
-        cluster_alert = (
+        # Collect all cluster-member NPIs, then find cluster alerts for any of them
+        member_npis = [s.npi for _, s, _ in members]
+        cluster_alerts = (
             db.query(Alert)
             .filter(Alert.alert_type == "cluster")
-            .filter(Alert.supplier_npi == members[0][1].npi)
-            .first()
+            .filter(Alert.supplier_npi.in_(member_npis))
+            .all()
         )
+
+        # Combine narratives from all cluster alerts for a comprehensive view
+        narratives = [a.llm_narrative for a in cluster_alerts if a.llm_narrative]
+        combined_narrative = "\n\n---\n\n".join(narratives) if narratives else None
 
         clusters.append({
             "cluster_id": cid,
@@ -51,7 +56,7 @@ def list_clusters(db: Session = Depends(get_db)):
             "avg_risk_score": round(avg_risk, 1),
             "cluster_risk_score": round(first_cluster.cluster_risk_score or avg_risk, 1),
             "shared_attributes": shared,
-            "llm_narrative": cluster_alert.llm_narrative if cluster_alert else None,
+            "llm_narrative": combined_narrative,
             "members": [
                 {
                     "npi": s.npi,
