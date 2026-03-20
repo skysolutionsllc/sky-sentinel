@@ -4,10 +4,23 @@ Supports: Anthropic Claude (primary), OpenAI (fallback), Mock (demo resilience).
 """
 import json
 from abc import ABC, abstractmethod
+from typing import Optional
+
 from backend.config import (
     ANTHROPIC_API_KEY, OPENAI_API_KEY, LLM_PROVIDER, LLM_MODEL,
     LLM_MODEL_BATCH, LLM_MODEL_INTERACTIVE,
 )
+
+
+UNUSABLE_LLM_MARKERS = (
+    "LLM analysis unavailable",
+)
+
+
+def is_usable_llm_text(text: Optional[str]) -> bool:
+    """Return True when the model produced real narrative content."""
+    normalized = (text or "").strip()
+    return bool(normalized) and not any(marker in normalized for marker in UNUSABLE_LLM_MARKERS)
 
 
 class BaseLLMProvider(ABC):
@@ -130,20 +143,85 @@ class OpenAIProvider(BaseLLMProvider):
         self.client = openai.OpenAI(api_key=key)
         self.model = model_name or LLM_MODEL or "chatgpt-5.4-mini"
 
+    def _extract_content(self, response) -> str:
+        """Normalize chat completion content to a single string."""
+        try:
+            content = response.choices[0].message.content
+        except Exception:
+            return ""
+
+        if isinstance(content, str):
+            return content.strip()
+
+        if isinstance(content, list):
+            parts = []
+            for item in content:
+                if isinstance(item, str):
+                    text = item
+                elif isinstance(item, dict):
+                    text = item.get("text") or item.get("content")
+                else:
+                    text = getattr(item, "text", None) or getattr(item, "content", None)
+
+                if text:
+                    parts.append(str(text).strip())
+
+            return "\n".join(part for part in parts if part).strip()
+
+        return str(content).strip() if content else ""
+
     def _call(self, system: str, prompt: str, max_tokens: int = 1500) -> str:
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": prompt}
         ]
+
+        token_budgets = []
+        for budget in (max_tokens, 2500, 4000):
+            if budget >= max_tokens and budget not in token_budgets:
+                token_budgets.append(budget)
+
+        last_issue = "empty response"
+
         try:
-            # ChatGPT 5.4 Mini and all newer OpenAI models use max_completion_tokens
-            # (max_tokens is explicitly unsupported and returns a 400 error)
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                max_completion_tokens=max_tokens,
+            for attempt_index, token_budget in enumerate(token_budgets, start=1):
+                # ChatGPT 5.4 Mini and all newer OpenAI models use max_completion_tokens
+                # (max_tokens is explicitly unsupported and returns a 400 error)
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    max_completion_tokens=token_budget,
+                )
+
+                finish_reason = getattr(response.choices[0], "finish_reason", None)
+                content = self._extract_content(response)
+
+                if content and finish_reason != "length":
+                    return content
+
+                if finish_reason == "length":
+                    last_issue = "finish_reason=length"
+                elif not content:
+                    last_issue = "empty content"
+                else:
+                    last_issue = f"finish_reason={finish_reason}"
+
+                if attempt_index < len(token_budgets):
+                    print(
+                        f"[LLM][OpenAI] Retrying {self.model} after {last_issue} "
+                        f"at max_completion_tokens={token_budget}."
+                    )
+                elif content:
+                    print(
+                        f"[LLM][OpenAI] Returning non-empty truncated response from {self.model} "
+                        f"after exhausting retries at max_completion_tokens={token_budget}."
+                    )
+                    return content
+
+            return (
+                f"[OpenAI LLM analysis unavailable: {self.model} returned {last_issue} "
+                f"after retries up to max_completion_tokens={token_budgets[-1]}]"
             )
-            return response.choices[0].message.content
         except Exception as e:
             return f"[OpenAI LLM analysis unavailable: {str(e)[:100]}]"
 
@@ -163,7 +241,16 @@ class OpenAIProvider(BaseLLMProvider):
             f"PEER BASELINE:\n{json.dumps(peer_baseline, indent=2, default=str)}\n\n"
             f"Generate a detailed risk assessment narrative focused on DME-specific fraud indicators."
         )
-        return self._call(system, prompt)
+        narrative = self._call(system, prompt)
+        if is_usable_llm_text(narrative):
+            return narrative
+
+        supplier_npi = supplier_data.get("npi", "unknown")
+        print(
+            f"[LLM][OpenAI] Falling back to mock supplier narrative for {supplier_npi} "
+            f"after unusable response from {self.model}."
+        )
+        return MockLLMProvider().analyze_supplier(supplier_data, claims, peer_baseline)
 
     def analyze_cluster(self, cluster_data: dict) -> str:
         system = (
@@ -179,7 +266,16 @@ class OpenAIProvider(BaseLLMProvider):
             f"Explain why these suppliers appear coordinated and what this pattern "
             f"suggests about potential fraud."
         )
-        return self._call(system, prompt, max_tokens=1200)
+        narrative = self._call(system, prompt, max_tokens=1200)
+        if is_usable_llm_text(narrative):
+            return narrative
+
+        cluster_id = cluster_data.get("cluster_id", "unknown")
+        print(
+            f"[LLM][OpenAI] Falling back to mock cluster narrative for cluster {cluster_id} "
+            f"after unusable response from {self.model}."
+        )
+        return MockLLMProvider().analyze_cluster(cluster_data)
 
     def process_query(self, question: str, context: dict) -> str:
         system = (
