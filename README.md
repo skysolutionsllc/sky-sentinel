@@ -135,7 +135,7 @@ Following the same architecture used by IBM's watsonx fraud detection, Sky Senti
 | Stage | Model Type | Role | Speed | Cost |
 |---|---|---|---|---|
 | **Stage 1: Classification** | Encoder-style (batch tier) | Rapid scoring, pattern classification, structured risk assessment during data ingestion | Fast | Low |
-| **Stage 2: Reasoning** | Decoder (interactive tier) | Human-readable narrative explanations, investigator Q&A, contextual analysis | Deliberate | Premium |
+| **Stage 2: Reasoning** | Decoder (interactive tier) | Human-readable narrative explanations, investigator Q&A, contextual analysis | Deliberate | Medium |
 
 > **Hackathon note:** In this MVP, both tiers use **ChatGPT 5.4 Mini** for simplicity. The architecture is designed so the batch tier can be swapped for purpose-built encoder models (BERT/RoBERTa) in production — no code changes needed, just update `.env`.
 
@@ -157,6 +157,18 @@ Investigators don't just review alerts — they **shape the detection**:
 ### 4. Real CMS Data Integration
 
 Sky Sentinel ingests **live data from the CMS Medicare Supplier API** — real NPIs, real geographies, real billing volumes — combined with synthetic fraud scenarios. This isn't a toy demo with fake data; it's production-adjacent intelligence built on actual Medicare provider records.
+
+In production, Sky Sentinel would integrate additional CMS and public data sources identified in our architecture design:
+
+| Data Source | Purpose |
+|---|---|
+| **CMS DME Supplier Utilization API** | Real NPIs, billing volumes, HCPCS codes, geographic data (currently integrated) |
+| **DMEPOS Fee Schedule** | Validates billed amounts against CMS-allowed reimbursement rates |
+| **Local/National Coverage Determinations (LCDs/NCDs)** | LLM cross-references claim documentation against coverage policy requirements |
+| **OIG Exclusion List (LEIE)** | Screens suppliers and referring physicians against excluded individuals/entities |
+| **Medicare Provider Enrollment Data (PECOS)** | Validates enrollment status, incorporation dates, and ownership history |
+| **Beneficiary Claims History** | Cross-references DME orders against beneficiary diagnosis and utilization patterns |
+| **DOJ/OIG Enforcement Actions** | Informs synthetic fraud scenario design and emerging scheme detection |
 
 ### 5. Algorithmic Fairness Monitoring
 
@@ -747,6 +759,20 @@ Healthcare delivery varies widely — unusual billing may reflect specialty prac
 | **Dismiss workflow** | Investigators can mark alerts as false positives with a logged dismissal reason, preventing re-escalation |
 | **Adjustable sensitivity** | 6-dimension threshold sliders plus a risk cutoff let investigators reduce sensitivity on factors that may produce false positives in their specific investigation context |
 | **Geographic fairness monitoring** | The Fairness & Bias Review panel tracks alert distributions across states, surfacing any disproportionate regional concentration |
+
+### 4. How does the system learn from false positives?
+
+Sky Sentinel implements a **closed-loop feedback mechanism** that uses investigator decisions to continuously improve detection accuracy:
+
+| Step | What Happens |
+|---|---|
+| **1. Investigator Review** | Analyst reviews a flagged supplier and clicks **False Positive — Dismiss** on the Supplier Detail page |
+| **2. Decision Logging** | The action, timestamp, investigator ID, and supplier context are recorded in the audit trail (`investigator_actions` table) |
+| **3. Re-escalation Prevention** | Dismissed suppliers are marked to prevent the same pattern from re-triggering alerts in subsequent detection runs |
+| **4. Baseline Adjustment** | Accumulated false positive signals inform peer baseline recalibration — suppliers with legitimately high but non-fraudulent billing gradually shift the peer distribution, reducing future false flags for similar profiles |
+| **5. Model Retraining** | In production (Phase 3), false positive and valid concern labels become supervised training data for the ML ensemble, enabling the Isolation Forest and Z-Score models to learn investigator-validated ground truth |
+
+> **Current MVP status:** Steps 1–3 are fully implemented. Steps 4–5 represent the production evolution where investigator decisions directly retrain the detection models — the architectural hooks (decision logging, labeled outcomes) are already in place.
 
 ---
 
