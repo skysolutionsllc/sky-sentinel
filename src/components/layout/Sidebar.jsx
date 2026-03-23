@@ -17,8 +17,8 @@ export default function Sidebar() {
     { path: '/clusters', icon: <Network size={20} />, label: 'Clusters' },
     ...(canAccessInvestigation() ? [
       { path: '/investigation', icon: <Search size={20} />, label: 'Investigation' },
+      { path: '/query', icon: <MessageSquare size={20} />, label: 'AI Query' },
     ] : []),
-    { path: '/query', icon: <MessageSquare size={20} />, label: 'AI Query' },
     ...(canAccessSettings() ? [
       { path: '/settings', icon: <Settings size={20} />, label: 'Settings' },
     ] : []),

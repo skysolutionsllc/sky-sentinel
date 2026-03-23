@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import { api } from '../services/api'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
@@ -60,6 +61,7 @@ const FACTOR_DESCRIPTIONS = {
 export default function SupplierDetail() {
   const { npi } = useParams()
   const navigate = useNavigate()
+  const { effectiveRole } = useAuth()
   const [data, setData] = useState(null)
   const [timeline, setTimeline] = useState([])
   const [actionStatus, setActionStatus] = useState(null)
@@ -246,7 +248,8 @@ export default function SupplierDetail() {
           )
         })()}
 
-        {/* Action Panel */}
+        {/* Action Panel — hidden for viewers */}
+        {effectiveRole !== 'viewer' && (
         <div className="glass-card full-width slide-up stagger-5">
           <div className="chart-title flex-center gap-2" style={{ marginBottom: 16 }}>
             <Target size={18} />
@@ -296,6 +299,7 @@ export default function SupplierDetail() {
             </div>
           )}
         </div>
+        )}
 
         {/* Recent Claims */}
         <div className="glass-card full-width slide-up">

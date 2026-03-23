@@ -11,8 +11,8 @@ import AIQuery from './pages/AIQuery'
 import Settings from './pages/Settings'
 
 function ProtectedRoute({ children, requiredRoles }) {
-  const { user } = useAuth()
-  if (requiredRoles && !requiredRoles.includes(user?.role)) {
+  const { effectiveRole } = useAuth()
+  if (requiredRoles && !requiredRoles.includes(effectiveRole)) {
     return <Navigate to="/" replace />
   }
   return children
@@ -39,7 +39,11 @@ function AppRoutes() {
               <Investigation />
             </ProtectedRoute>
           } />
-          <Route path="/query" element={<AIQuery />} />
+          <Route path="/query" element={
+            <ProtectedRoute requiredRoles={['admin', 'investigator']}>
+              <AIQuery />
+            </ProtectedRoute>
+          } />
           <Route path="/settings" element={
             <ProtectedRoute requiredRoles={['admin']}>
               <Settings />
