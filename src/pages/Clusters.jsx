@@ -16,15 +16,28 @@ function summarize(text) {
 
 /* ─── Individual Cluster Network Visualization ─── */
 function ClusterGraph({ cluster, navigate }) {
-  const size = 260
-  const center = size / 2
-  const hubR = 26
-  const memberR = 16
-  const spokeR = 90
   const members = cluster.members || []
+  const count = members.length
+
+  // Adaptive sizing based on member count
+  const size = count > 12 ? 340 : count > 8 ? 300 : 260
+  const center = size / 2
+  const hubR = count > 12 ? 22 : 26
+  const memberR = count > 12 ? 12 : count > 8 ? 14 : 16
+
+  // For large clusters, use concentric rings
+  const rings = []
+  if (count <= 10) {
+    rings.push({ members: members, radius: size * 0.34 })
+  } else {
+    // Inner ring: first 8, outer ring: rest
+    const innerCount = Math.min(8, Math.ceil(count / 2))
+    rings.push({ members: members.slice(0, innerCount), radius: size * 0.26 })
+    rings.push({ members: members.slice(innerCount), radius: size * 0.43 })
+  }
 
   return (
-    <svg width="100%" viewBox={`0 0 ${size} ${size}`} style={{ maxHeight: 260 }}>
+    <svg width="100%" viewBox={`0 0 ${size} ${size}`} style={{ maxHeight: size }}>
       <defs>
         <filter id={`glow-hub-${cluster.cluster_id}`} x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="5" result="b" />
@@ -49,31 +62,34 @@ function ClusterGraph({ cluster, navigate }) {
         <animate attributeName="opacity" values="0.6;0;0.6" dur="4s" repeatCount="indefinite" />
       </circle>
 
-      {/* Spokes + member nodes */}
-      {members.slice(0, 8).map((m, mi) => {
-        const angle = (mi / Math.min(members.length, 8)) * Math.PI * 2 - Math.PI / 2
-        const mx = center + Math.cos(angle) * spokeR
-        const my = center + Math.sin(angle) * spokeR
-        const isCritical = m.risk_score >= 80
-        const isHigh = m.risk_score >= 60
-        const color = isCritical ? '#EF4444' : isHigh ? '#F59E0B' : '#3B82F6'
-        const filter = (isCritical || isHigh) ? `url(#glow-node-${cluster.cluster_id})` : ''
-        // Truncate name to initials
-        const initials = (m.name || '').split(' ').map(w => w[0]).filter(Boolean).slice(0, 3).join('')
-        return (
-          <g key={m.npi} style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); navigate(`/supplier/${m.npi}`) }}>
-            <line x1={center} y1={center} x2={mx} y2={my} stroke={color} strokeOpacity="0.25" strokeWidth="1.5" strokeDasharray="3 3" />
-            <circle cx={mx} cy={my} r={memberR} fill="rgba(10,22,40,0.9)" stroke={color} strokeWidth="2" filter={filter} />
-            <circle cx={mx} cy={my} r={3} fill={color} />
-            <text x={mx} y={my - memberR - 5} textAnchor="middle" fill="#94A3B8" fontSize={8} fontWeight={500}>
-              {initials}
-            </text>
-            <text x={mx} y={my + memberR + 12} textAnchor="middle" fill={color} fontSize={9} fontWeight={700}>
-              {Math.round(m.risk_score)}
-            </text>
-          </g>
-        )
-      })}
+      {/* Spokes + member nodes — all rings */}
+      {rings.map((ring, ri) =>
+        ring.members.map((m, mi) => {
+          const ringCount = ring.members.length
+          const angle = (mi / ringCount) * Math.PI * 2 - Math.PI / 2
+          const mx = center + Math.cos(angle) * ring.radius
+          const my = center + Math.sin(angle) * ring.radius
+          const isCritical = m.risk_score >= 80
+          const isHigh = m.risk_score >= 60
+          const color = isCritical ? '#EF4444' : isHigh ? '#F59E0B' : '#3B82F6'
+          const filter = (isCritical || isHigh) ? `url(#glow-node-${cluster.cluster_id})` : ''
+          const initials = (m.name || '').split(' ').map(w => w[0]).filter(Boolean).slice(0, 3).join('')
+          const nodeR = ri > 0 ? memberR - 2 : memberR
+          return (
+            <g key={m.npi} style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); navigate(`/supplier/${m.npi}`) }}>
+              <line x1={center} y1={center} x2={mx} y2={my} stroke={color} strokeOpacity={ri > 0 ? "0.15" : "0.25"} strokeWidth="1.5" strokeDasharray="3 3" />
+              <circle cx={mx} cy={my} r={nodeR} fill="rgba(10,22,40,0.9)" stroke={color} strokeWidth="2" filter={filter} />
+              <circle cx={mx} cy={my} r={3} fill={color} />
+              <text x={mx} y={my - nodeR - 4} textAnchor="middle" fill="#94A3B8" fontSize={count > 12 ? 7 : 8} fontWeight={500}>
+                {initials}
+              </text>
+              <text x={mx} y={my + nodeR + 11} textAnchor="middle" fill={color} fontSize={count > 12 ? 8 : 9} fontWeight={700}>
+                {Math.round(m.risk_score)}
+              </text>
+            </g>
+          )
+        })
+      )}
 
       {/* Hub core */}
       <circle cx={center} cy={center} r={hubR} fill="rgba(10,22,40,0.95)" stroke="#2196F3" strokeWidth="2.5" filter={`url(#glow-hub-${cluster.cluster_id})`} />

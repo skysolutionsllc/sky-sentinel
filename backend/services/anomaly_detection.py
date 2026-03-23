@@ -14,7 +14,7 @@ def run_anomaly_detection(db: Session):
       1. Peer groups   — group suppliers by state, compute baseline stats
       2. Isolation Forest — 100-tree ensemble, 7 features, contamination=10%
       3. Z-Score        — deviation from state peer group mean billing
-      4. DBSCAN         — behavioral clustering, eps=0.8, min_samples=3
+      4. DBSCAN         — behavioral clustering, eps=0.8, min_samples=5
       5. Composite      — weighted combination of all signals (0-100 scale)
       6. Cluster risk   — average composite score per cluster
     """
@@ -199,7 +199,7 @@ def _run_cluster_detection(db: Session):
 
     The two key parameters:
       - eps=0.8: suppliers within 0.8 standard deviations are "neighbors"
-      - min_samples=3: a cluster needs at least 3 core members
+      - min_samples=5: a cluster needs at least 5 core members
 
     Points that don't belong to any cluster are labeled as noise (-1).
     """
@@ -233,7 +233,7 @@ def _run_cluster_detection(db: Session):
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    dbscan = DBSCAN(eps=0.8, min_samples=2)
+    dbscan = DBSCAN(eps=0.8, min_samples=5)
     labels = dbscan.fit_predict(X_scaled)
 
     # Clear existing clusters
