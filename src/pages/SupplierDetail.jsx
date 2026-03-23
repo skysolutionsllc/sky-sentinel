@@ -63,6 +63,7 @@ export default function SupplierDetail() {
   const [data, setData] = useState(null)
   const [timeline, setTimeline] = useState([])
   const [actionStatus, setActionStatus] = useState(null)
+  const [outboundNotification, setOutboundNotification] = useState(null)
 
   useEffect(() => {
     api.supplierDetail(npi).then(setData).catch(console.error)
@@ -74,8 +75,9 @@ export default function SupplierDetail() {
 
   const handleAction = async (action) => {
     if (!alert) return
-    await api.alertAction(alert.id, { action, investigator: 'Demo Analyst', notes: '' })
+    const result = await api.alertAction(alert.id, { action, investigator: 'Demo Analyst', notes: '' })
     setActionStatus(action)
+    if (result.outbound_notification) setOutboundNotification(result.outbound_notification)
   }
 
   // Build gauge percentage
@@ -251,9 +253,29 @@ export default function SupplierDetail() {
             Investigator Actions
           </div>
           {actionStatus ? (
-            <div className="flex-center justify-center gap-2" style={{ padding: 20, color: 'var(--status-clean)' }}>
-              <CheckCircle2 size={18} /> 
-              <span>Alert marked as <strong>{actionStatus.replace('_', ' ')}</strong>. Decision logged.</span>
+            <div>
+              <div className="flex-center justify-center gap-2" style={{ padding: 20, color: 'var(--status-clean)' }}>
+                <CheckCircle2 size={18} /> 
+                <span>Alert marked as <strong>{actionStatus.replace('_', ' ')}</strong>. Decision logged.</span>
+              </div>
+              {outboundNotification && (
+                <div style={{
+                  marginTop: 12, padding: 16, borderRadius: 10,
+                  background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)',
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#3B82F6', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Network size={15} /> Outbound Insurance Provider Notification Sent
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 20px', fontSize: 12, color: 'var(--sky-text-secondary)' }}>
+                    <div><strong style={{ color: 'var(--sky-text-primary)' }}>Reference:</strong> {outboundNotification.reference_id}</div>
+                    <div><strong style={{ color: 'var(--sky-text-primary)' }}>Carrier:</strong> {outboundNotification.carrier}</div>
+                    <div><strong style={{ color: 'var(--sky-text-primary)' }}>Endpoint:</strong> <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{outboundNotification.endpoint}</span></div>
+                    <div><strong style={{ color: 'var(--sky-text-primary)' }}>Priority:</strong> <span style={{ color: outboundNotification.payload?.priority === 'HIGH' ? '#EF4444' : '#F59E0B', fontWeight: 600 }}>{outboundNotification.payload?.priority}</span></div>
+                    <div><strong style={{ color: 'var(--sky-text-primary)' }}>Status:</strong> <span style={{ color: '#10B981', fontWeight: 600 }}>✓ {outboundNotification.status}</span></div>
+                    <div><strong style={{ color: 'var(--sky-text-primary)' }}>Timestamp:</strong> {new Date(outboundNotification.timestamp).toLocaleString()}</div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>

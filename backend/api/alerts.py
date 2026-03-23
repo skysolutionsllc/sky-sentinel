@@ -87,6 +87,8 @@ def alert_summary(db: Session = Depends(get_db)):
 @router.post("/{alert_id}/action")
 def alert_action(alert_id: int, req: AlertActionRequest, db: Session = Depends(get_db)):
     """Record an investigator action on an alert."""
+    import uuid
+
     alert = db.query(Alert).filter(Alert.id == alert_id).first()
     if not alert:
         return {"error": "Alert not found"}
@@ -110,4 +112,27 @@ def alert_action(alert_id: int, req: AlertActionRequest, db: Session = Depends(g
     db.add(action_log)
     db.commit()
 
-    return {"status": "success", "alert_status": alert.status}
+    response = {"status": "success", "alert_status": alert.status}
+
+    # Outbound insurance provider notification on escalation
+    if req.action in ("valid_concern", "escalate"):
+        supplier = db.query(Supplier).filter(Supplier.npi == alert.supplier_npi).first()
+        notification = {
+            "reference_id": f"ESC-{uuid.uuid4().hex[:8].upper()}",
+            "endpoint": "https://api.cms-carrier-gateway.gov/fraud-alerts/v1/notify",
+            "method": "POST",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "payload": {
+                "supplier_npi": alert.supplier_npi,
+                "supplier_name": supplier.name if supplier else "Unknown",
+                "risk_score": round(alert.risk_score, 1),
+                "alert_title": alert.title,
+                "escalated_by": req.investigator,
+                "priority": "HIGH" if alert.risk_score >= 80 else "MEDIUM",
+            },
+            "status": "sent",
+            "carrier": "Medicare Administrative Contractor (MAC)",
+        }
+        response["outbound_notification"] = notification
+
+    return response

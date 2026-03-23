@@ -108,6 +108,82 @@ def list_patterns(db: Session = Depends(get_db)):
     ]
 
 
+# ─── Weight Configuration Endpoints ───
+
+
+class WeightConfigRequest(BaseModel):
+    name: str
+    weights: dict
+    created_by: str = "Investigator"
+
+
+class WeightConfigRename(BaseModel):
+    name: str
+
+
+@router.post("/weight-configs")
+def save_weight_config(req: WeightConfigRequest, db: Session = Depends(get_db)):
+    """Save a named weight configuration."""
+    config = PatternDefinition(
+        name=f"__wc__{req.name}",
+        criteria=req.weights,
+        created_by=req.created_by,
+    )
+    db.add(config)
+    db.commit()
+    db.refresh(config)
+    return {
+        "id": config.id,
+        "name": req.name,
+        "weights": config.criteria,
+        "created_by": config.created_by,
+        "created_at": config.created_at.isoformat() if config.created_at else None,
+    }
+
+
+@router.get("/weight-configs")
+def list_weight_configs(db: Session = Depends(get_db)):
+    """List all saved weight configurations."""
+    configs = (
+        db.query(PatternDefinition)
+        .filter(PatternDefinition.name.like("__wc__%"))
+        .order_by(PatternDefinition.created_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id": c.id,
+            "name": c.name.replace("__wc__", ""),
+            "weights": c.criteria,
+            "created_by": c.created_by,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+        }
+        for c in configs
+    ]
+
+
+@router.put("/weight-configs/{config_id}")
+def rename_weight_config(config_id: int, req: WeightConfigRename, db: Session = Depends(get_db)):
+    """Rename a saved weight configuration."""
+    config = db.query(PatternDefinition).filter(PatternDefinition.id == config_id).first()
+    if not config:
+        return {"error": "Config not found"}
+    config.name = f"__wc__{req.name}"
+    db.commit()
+    return {"id": config.id, "name": req.name}
+
+
+@router.delete("/weight-configs/{config_id}")
+def delete_weight_config(config_id: int, db: Session = Depends(get_db)):
+    """Delete a saved weight configuration."""
+    config = db.query(PatternDefinition).filter(PatternDefinition.id == config_id).first()
+    if not config:
+        return {"error": "Config not found"}
+    db.delete(config)
+    db.commit()
+    return {"status": "deleted"}
+
+
 @router.post("/threshold-test")
 def threshold_test(req: ThresholdTestRequest, db: Session = Depends(get_db)):
     """What-if threshold test — recompute alert population with new weights."""

@@ -1,15 +1,15 @@
 const API_BASE = '/api';
 
 async function fetchJSON(url, options = {}) {
-  const provider = localStorage.getItem('llm_provider') || 'anthropic';
-  const model = localStorage.getItem('llm_model') || 'claude-sonnet-4-20250514';
+  const provider = localStorage.getItem('llm_provider') || 'openai';
+  const model = localStorage.getItem('llm_model') || 'gpt-4o-mini';
 
   // Use provider-specific API key
   let apiKey = '';
-  if (provider === 'anthropic') {
-    apiKey = localStorage.getItem('llm_api_key_anthropic') || localStorage.getItem('llm_api_key') || '';
-  } else if (provider === 'openai') {
+  if (provider === 'openai') {
     apiKey = localStorage.getItem('llm_api_key_openai') || localStorage.getItem('llm_api_key') || '';
+  } else if (provider === 'anthropic') {
+    apiKey = localStorage.getItem('llm_api_key_anthropic') || localStorage.getItem('llm_api_key') || '';
   }
 
   const llmHeaders = {
@@ -81,4 +81,16 @@ export const api = {
     method: 'POST', body: JSON.stringify({ query }),
   }),
   queryHistory: () => fetchJSON('/investigation/query-history'),
+
+  // Weight Configs
+  saveWeightConfig: (body) => fetchJSON('/investigation/weight-configs', {
+    method: 'POST', body: JSON.stringify(body),
+  }),
+  listWeightConfigs: () => fetchJSON('/investigation/weight-configs'),
+  renameWeightConfig: (id, name) => fetchJSON(`/investigation/weight-configs/${id}`, {
+    method: 'PUT', body: JSON.stringify({ name }),
+  }),
+  deleteWeightConfig: (id) => fetchJSON(`/investigation/weight-configs/${id}`, {
+    method: 'DELETE',
+  }),
 };

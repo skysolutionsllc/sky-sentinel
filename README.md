@@ -356,10 +356,10 @@ Configurable model selection with support for multiple providers:
 | Provider | Available Models |
 |---|---|
 | **OpenAI** *(default)* | ChatGPT 5.4 Mini, ChatGPT 5.4 Nano, GPT-4.1, GPT-4.1 Mini, GPT-4.1 Nano, o3, o4-mini, GPT-4o, GPT-4o Mini |
-| **Anthropic** | Claude Sonnet 4, Claude Opus 4, Claude 3.7 Sonnet, Claude 3.5 Sonnet, Claude 3.5 Haiku |
 | **Local (Ollama)** | Llama 3, Mistral, DeepSeek R1, Qwen 2.5, Phi-4, Gemma 3 |
+| **Mock (Demo)** | Pre-generated narratives for offline/demo use |
 
-API keys are stored in browser localStorage and sent via headers — never logged on the server.
+The architecture supports swappable LLM providers via an abstract `BaseLLMProvider` interface — additional providers can be added without code changes. API keys are stored in browser localStorage and sent via headers — never logged on the server.
 
 ---
 
@@ -502,7 +502,7 @@ LLM_MODEL_INTERACTIVE=chatgpt-5.4-mini     # Decoder / reasoning tier
 
 **Why this matters:** In the hackathon MVP, both tiers use ChatGPT 5.4 Mini for simplicity. In production, the batch tier would use purpose-built encoder models (BERT/RoBERTa) for sub-millisecond classification at ~$0.08 per run, while the interactive tier would use a premium reasoning model for the depth and nuance that user-facing features demand. The architecture already supports swapping models per tier via `.env` — no code changes required.
 
-The system supports **swappable LLM providers** (OpenAI, Anthropic, Local/Ollama) configurable through both environment variables and the in-app Settings page, ensuring vendor flexibility for government deployments.
+The system supports **swappable LLM providers** (OpenAI, Local/Ollama, Mock) configurable through both environment variables and the in-app Settings page, ensuring vendor flexibility for government deployments.
 
 ---
 
@@ -560,7 +560,7 @@ The system supports **swappable LLM providers** (OpenAI, Anthropic, Local/Ollama
 | **Single SPA** | Consolidated into one unified dashboard for seamless investigator workflow |
 | **SQLite over PostgreSQL** | Zero-config portability — judges can clone and run immediately without database setup. SQLAlchemy ORM provides a clean migration path to PostgreSQL for production |
 | **Multi-model LLM routing** | Two-tier architecture (batch + interactive) — both use ChatGPT 5.4 Mini in hackathon MVP; designed to swap batch tier for encoder models (BERT/RoBERTa) in production |
-| **Swappable LLM adapter** | Abstract `BaseLLMProvider` interface with `OpenAIProvider`, `AnthropicProvider`, `LocalProvider`, and `MockLLMProvider` fallback — if the API is unavailable during demo, the system gracefully falls back to pre-generated narratives |
+| **Swappable LLM adapter** | Abstract `BaseLLMProvider` interface with `OpenAIProvider`, `LocalProvider`, and `MockLLMProvider` fallback — if the API is unavailable during demo, the system gracefully falls back to pre-generated narratives. Additional providers can be plugged in via the same interface |
 | **Real CMS data + synthetic fraud** | Real supplier data provides authenticity; synthetic fraud scenarios ensure compelling demo stories |
 | **Two-tier model routing** | Optimizes API cost and latency without sacrificing interactive quality |
 
@@ -774,6 +774,21 @@ Sky Sentinel implements a **closed-loop feedback mechanism** that uses investiga
 
 > **Current MVP status:** Steps 1–3 are fully implemented. Steps 4–5 represent the production evolution where investigator decisions directly retrain the detection models — the architectural hooks (decision logging, labeled outcomes) are already in place.
 
+### 5. Outbound Insurance Provider Notification
+
+When an investigator clicks **"Valid Concern — Escalate"**, Sky Sentinel simulates an outbound API notification to the insurance carrier (Medicare Administrative Contractor), enabling proactive fraud loss prevention:
+
+| Component | Detail |
+|---|---|
+| **Trigger** | Investigator clicks "Valid Concern — Escalate" on the Supplier Detail page |
+| **Outbound Endpoint** | `POST https://api.cms-carrier-gateway.gov/fraud-alerts/v1/notify` (simulated) |
+| **Payload** | Supplier NPI, name, risk score, alert title, priority level, escalating analyst ID |
+| **Reference ID** | Unique `ESC-XXXXXXXX` tracking number for audit and follow-up |
+| **Priority** | `HIGH` (risk score ≥ 80) or `MEDIUM` (risk score < 80) |
+| **UI Feedback** | Notification card displays reference ID, carrier, endpoint, priority, status, and timestamp |
+
+> **Production vision:** In a live deployment, this outbound call would integrate with CMS's existing carrier notification systems, enabling MACs to flag claims from escalated suppliers in real time — reducing fraud losses during the investigation window.
+
 ---
 
 ## Demo Walkthrough (5 Minutes)
@@ -946,9 +961,8 @@ On first boot the container now creates the schema immediately, starts uvicorn r
 | `BACKEND_PORT` | `8000` | Port uvicorn listens on |
 | `DATABASE_URL` | `sqlite:////data/sky_sentinel.db` | SQLite path (mount `/data` for persistence) |
 | `SKY_SENTINEL_AUTO_BOOTSTRAP` | `1` | Start the background seed/repair worker on backend startup; set `0` to disable |
-| `LLM_PROVIDER` | `mock` | `openai`, `anthropic`, `local`, or `mock` |
+| `LLM_PROVIDER` | `mock` | `openai`, `local`, or `mock` |
 | `OPENAI_API_KEY` | *(empty)* | Required when `LLM_PROVIDER=openai` |
-| `ANTHROPIC_API_KEY` | *(empty)* | Required when `LLM_PROVIDER=anthropic` |
 | `CMS_API_BASE_URL` | `https://data.cms.gov/data-api/v1/dataset` | CMS data endpoint |
 
 #### Deploy on Coolify
@@ -989,6 +1003,76 @@ On first boot the container now creates the schema immediately, starts uvicorn r
 
 ---
 
+## REST API Documentation
+
+Sky Sentinel exposes a comprehensive REST API that enables integration with existing case management systems, SIEM platforms, and partner agency workflows. All endpoints return JSON.
+
+### Base URL: `/api`
+
+#### Dashboard & Analytics
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/dashboard/stats` | Aggregate risk statistics: total suppliers, flagged count, critical alerts, cluster count |
+| `GET` | `/dashboard/geo-risk` | State-level risk heatmap data: flagged counts and avg risk per state |
+| `GET` | `/dashboard/trends` | Time-series billing trends across all monitored suppliers |
+| `GET` | `/dashboard/hcpcs-distribution` | Top HCPCS code distribution by billing volume |
+
+#### Suppliers
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/suppliers` | Paginated supplier list with risk scores. Filters: `risk_level`, `state`, `sort_by` |
+| `GET` | `/suppliers/{npi}` | Full supplier drill-down: risk factors, alert, cluster ID, recent claims |
+| `GET` | `/suppliers/{npi}/timeline` | 4-quarter billing time-series for trend analysis |
+| `GET` | `/suppliers/{npi}/peers` | Peer comparison: same-state suppliers ranked by risk |
+
+#### Alerts & Escalation
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/alerts` | Ranked alert list. Filters: `risk_level`, `status`, `state` |
+| `GET` | `/alerts/summary` | Alert counts by risk level and status |
+| `POST` | `/alerts/{id}/action` | Record investigator decision: `valid_concern`, `false_positive`, `monitor`. Escalation triggers outbound insurance provider notification |
+
+#### Clusters
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/clusters` | All detected fraud clusters with member NPIs, shared attributes, and AI narratives |
+| `GET` | `/clusters/{id}` | Individual cluster detail with full narrative |
+
+#### Investigation & AI
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/investigation/threshold-test` | What-if analysis: recompute alert population with custom weight configuration |
+| `POST` | `/investigation/query` | Natural language query processed by LLM against supplier database |
+| `GET` | `/investigation/query-history` | Recent AI query log |
+| `POST` | `/investigation/weight-configs` | Save a named weight configuration |
+| `GET` | `/investigation/weight-configs` | List all saved weight configurations |
+| `PUT` | `/investigation/weight-configs/{id}` | Rename a saved configuration |
+| `DELETE` | `/investigation/weight-configs/{id}` | Delete a saved configuration |
+
+#### Claims
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/claims/feed` | Real-time claims feed with status badges |
+| `POST` | `/claims` | Submit a claim for processing |
+
+#### System
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Health check endpoint for deployment monitoring |
+| `GET` | `/settings/models` | Available LLM models by provider |
+| `POST` | `/auth/login` | JWT authentication |
+
+> **Integration-ready:** The API-first architecture means Sky Sentinel can serve as a backend intelligence engine for existing CMS case management workflows — partner systems can consume risk scores, alert data, and AI narratives via standard REST calls without requiring the Sky Sentinel UI.
+
+---
+
 ## Judging Criteria Alignment
 
 | Criteria | Weight | How Sky Sentinel Addresses It |
@@ -996,7 +1080,7 @@ On first boot the container now creates the schema immediately, starts uvicorn r
 | **Mission Relevance** | High | Directly targets CMS Program Integrity's #1 challenge — proactive DME fraud detection. Uses real CMS supplier data. Designed as a complementary intelligence layer alongside existing detection infrastructure |
 | **Technical Soundness** | High | Three-layer detection pipeline (statistical ML + behavioral clustering + LLM reasoning). Composite risk scoring with transparent, adjustable weights. Peer grouping methodology grounded in CMS data practices. Real API integration. Multi-model LLM routing for cost optimization |
 | **Explainability & Responsible AI** | High | Every alert includes AI-generated narrative reasoning. Risk scores decompose into 6 visible factors. No automated enforcement — all actions require investigator confirmation. Decision audit trail. Geographic fairness monitoring. Privacy-first design with no PHI/PII |
-| **Feasibility for Agency Adoption** | High | SQLite → PostgreSQL migration path via SQLAlchemy. Swappable LLM adapter supports vendor flexibility (OpenAI, Anthropic, local LLMs). API-first architecture supports integration with existing case management workflows. Mock fallback ensures demo resilience. JWT-based role-based access control with 3 roles (Admin, Investigator, Viewer) |
+| **Feasibility for Agency Adoption** | High | SQLite → PostgreSQL migration path via SQLAlchemy. Swappable LLM adapter supports vendor flexibility (OpenAI, local LLMs). Comprehensive REST API (25+ endpoints) enables integration with existing case management workflows. Outbound escalation notifications to insurance carriers. Mock fallback ensures demo resilience. JWT-based role-based access control with 3 roles (Admin, Investigator, Viewer) |
 | **Innovation** | High | First-of-kind integration of ensemble AI anomaly detection + two-stage LLM pipeline for Medicare fraud. Cross-supplier behavioral clustering. Natural language investigation queries. Three-tier model routing for cost/quality optimization. Investigator-defined pattern modeling |
 | **Demo Clarity** | Medium | Clear 4-act narrative arc: Dashboard overview → Individual detection → Coordinated network → Investigator control. Interactive demo with real data. AI Approach banner explicitly communicates advantages |
 
@@ -1060,7 +1144,6 @@ Sky Sentinel wasn't built using a traditional software development lifecycle. **
 |---|---|
 | **Google Gemini** (Antigravity / AI Coding Agent) | Primary development partner — architecture design, full-stack code generation, iterative debugging, code review, and codebase refactoring. Gemini served as a tireless pair programmer across the entire 15,000+ line codebase |
 | **OpenAI ChatGPT 5.4 Mini** | Powers the production LLM features — supplier risk narratives, cluster analysis, natural language queries, and text similarity detection |
-| **Claude** (Anthropic) | Alternative LLM provider supported in the platform; used for research and architectural reasoning during planning |
 
 ### Our Approach: AI-First, Not Waterfall
 
@@ -1081,7 +1164,7 @@ Traditional hackathon teams follow a compressed version of SDLC — requirements
 - **15,000+ lines of production-quality code** across a full-stack application (React 19, FastAPI, SQLAlchemy, scikit-learn, OpenAI integration)
 - **7 interconnected application pages** with a cohesive glassmorphism design system
 - **3 ML algorithms** (Isolation Forest, Z-Score, DBSCAN) with a composite scoring pipeline
-- **Multi-model LLM integration** with 4 providers (OpenAI, Anthropic, Local/Ollama, Mock fallback)
+- **Multi-model LLM integration** with 3 providers (OpenAI, Local/Ollama, Mock fallback)
 - **Live CMS API integration** with real Medicare supplier data
 - **Docker deployment** with single-container production builds
 - **Comprehensive documentation** (this README: 1,100+ lines)

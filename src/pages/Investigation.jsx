@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
-import { Search, Settings, Microscope, BarChart2, Loader2, Save, RotateCcw, BookOpen } from 'lucide-react'
+import { Search, Settings, Microscope, BarChart2, Loader2, Save, RotateCcw, BookOpen, Trash2, Edit3, Download } from 'lucide-react'
 
 const DEFAULT_WEIGHTS = {
   billing_volume_weight: 20,
@@ -80,13 +80,21 @@ export default function Investigation() {
   const [selectedPreset, setSelectedPreset] = useState('')
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [patterns, setPatterns] = useState([])
+  const [savedConfigs, setSavedConfigs] = useState([])
   const [savedMsg, setSavedMsg] = useState(false)
+  const [showSaveModal, setShowSaveModal] = useState(false)
+  const [saveName, setSaveName] = useState('')
+  const [renamingId, setRenamingId] = useState(null)
+  const [renameValue, setRenameValue] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
-    api.listPatterns().then(setPatterns).catch(console.error)
+    loadConfigs()
   }, [])
+
+  const loadConfigs = () => {
+    api.listWeightConfigs().then(setSavedConfigs).catch(console.error)
+  }
 
   const handleThresholdTest = async () => {
     setLoading(true)
@@ -109,10 +117,33 @@ export default function Investigation() {
     }
   }
 
-  const handleSave = () => {
-    localStorage.setItem('investigation_weights', JSON.stringify(weights))
+  const handleSaveConfig = async () => {
+    if (!saveName.trim()) return
+    await api.saveWeightConfig({ name: saveName.trim(), weights, created_by: 'Demo Analyst' })
+    setSaveName('')
+    setShowSaveModal(false)
+    loadConfigs()
     setSavedMsg(true)
     setTimeout(() => setSavedMsg(false), 2000)
+  }
+
+  const handleLoadConfig = (config) => {
+    setWeights({ ...config.weights })
+    setSelectedPreset('')
+    localStorage.setItem('investigation_weights', JSON.stringify(config.weights))
+  }
+
+  const handleRename = async (id) => {
+    if (!renameValue.trim()) return
+    await api.renameWeightConfig(id, renameValue.trim())
+    setRenamingId(null)
+    setRenameValue('')
+    loadConfigs()
+  }
+
+  const handleDelete = async (id) => {
+    await api.deleteWeightConfig(id)
+    loadConfigs()
   }
 
   const handleReset = () => {
@@ -154,10 +185,10 @@ export default function Investigation() {
             <button
               className="btn-primary"
               style={{ fontSize: 12, padding: '6px 12px' }}
-              onClick={handleSave}
+              onClick={() => setShowSaveModal(true)}
             >
               <Save size={14} style={{ marginRight: 4 }} />
-              {savedMsg ? '✓ Saved!' : 'Save'}
+              {savedMsg ? '✓ Saved!' : 'Save Config'}
             </button>
             <button
               className="btn-primary"
@@ -168,6 +199,35 @@ export default function Investigation() {
               Reset
             </button>
           </div>
+
+          {/* Save Modal */}
+          {showSaveModal && (
+            <div style={{
+              padding: 16, marginBottom: 16, borderRadius: 10,
+              background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)',
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: '#3B82F6' }}>
+                Save Weight Configuration
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className="query-input"
+                  style={{ fontSize: 13, padding: '8px 12px' }}
+                  placeholder="Configuration name..."
+                  value={saveName}
+                  onChange={e => setSaveName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSaveConfig()}
+                  autoFocus
+                />
+                <button className="btn-primary" style={{ fontSize: 12, padding: '6px 14px' }} onClick={handleSaveConfig}>
+                  Save
+                </button>
+                <button className="btn-secondary" style={{ fontSize: 12, padding: '6px 14px' }} onClick={() => setShowSaveModal(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           <p style={{ fontSize: 13, color: 'var(--sky-text-secondary)', marginBottom: 20 }}>
             Adjust the weight of each anomaly dimension and the risk threshold to see how the alert population changes.
@@ -260,34 +320,63 @@ export default function Investigation() {
           )}
         </div>
 
-        {/* Saved Patterns */}
+        {/* Saved Weight Configurations */}
         <div className="glass-card full-width slide-up stagger-3">
           <div className="chart-title flex-center gap-2" style={{ marginBottom: 16 }}>
-            <Save size={18} /> Saved Investigation Patterns
+            <Save size={18} /> Saved Weight Configurations
           </div>
-          {patterns.length === 0 ? (
+          {savedConfigs.length === 0 ? (
             <div style={{ color: 'var(--sky-text-muted)', textAlign: 'center', padding: 24 }}>
-              No patterns saved yet. Use the AI Query interface to define and save patterns.
+              No weight configurations saved yet. Adjust the sliders above and click "Save Config" to save your first configuration.
             </div>
           ) : (
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Pattern Name</th>
-                  <th>Criteria</th>
-                  <th>Matches</th>
+                  <th>Configuration Name</th>
+                  <th>Weights Summary</th>
                   <th>Created By</th>
                   <th>Date</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {patterns.map(p => (
-                  <tr key={p.id}>
-                    <td style={{ fontWeight: 600 }}>{p.name}</td>
-                    <td style={{ fontSize: 12 }}>{JSON.stringify(p.criteria)}</td>
-                    <td style={{ fontWeight: 700, color: 'var(--sky-light)' }}>{p.match_count || 0}</td>
-                    <td>{p.created_by}</td>
-                    <td style={{ fontSize: 12 }}>{p.created_at ? new Date(p.created_at).toLocaleDateString() : ''}</td>
+                {savedConfigs.map(c => (
+                  <tr key={c.id}>
+                    <td style={{ fontWeight: 600 }}>
+                      {renamingId === c.id ? (
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <input
+                            className="query-input"
+                            style={{ fontSize: 12, padding: '4px 8px', width: 160 }}
+                            value={renameValue}
+                            onChange={e => setRenameValue(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleRename(c.id)}
+                            autoFocus
+                          />
+                          <button className="btn-primary" style={{ fontSize: 11, padding: '3px 8px' }} onClick={() => handleRename(c.id)}>✓</button>
+                          <button className="btn-secondary" style={{ fontSize: 11, padding: '3px 8px' }} onClick={() => setRenamingId(null)}>✕</button>
+                        </div>
+                      ) : c.name}
+                    </td>
+                    <td style={{ fontSize: 12, color: 'var(--sky-text-secondary)' }}>
+                      {c.weights ? Object.entries(c.weights).filter(([k]) => k !== 'risk_threshold').map(([k, v]) => `${WEIGHT_LABELS[k]?.split(' ')[0] || k}: ${v}`).join(' · ') : '—'}
+                    </td>
+                    <td>{c.created_by}</td>
+                    <td style={{ fontSize: 12 }}>{c.created_at ? new Date(c.created_at).toLocaleDateString() : ''}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button className="btn-primary" style={{ fontSize: 11, padding: '4px 10px' }} onClick={() => handleLoadConfig(c)} title="Load">
+                          <Download size={12} style={{ marginRight: 3 }} /> Load
+                        </button>
+                        <button className="btn-secondary" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => { setRenamingId(c.id); setRenameValue(c.name) }} title="Rename">
+                          <Edit3 size={12} />
+                        </button>
+                        <button className="btn-danger" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => handleDelete(c.id)} title="Delete">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
