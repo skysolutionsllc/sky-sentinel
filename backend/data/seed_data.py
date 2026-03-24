@@ -106,6 +106,11 @@ CITIES_BY_STATE = {
 
 def seed_database():
     """Main seeder — orchestrates everything."""
+    # Fixed seeds for deterministic output — ensures DBSCAN clustering produces
+    # consistent cluster structure (3-4 clusters with 5-17 members each)
+    random.seed(42)
+    np.random.seed(42)
+
     init_db()
     db = SessionLocal()
 
@@ -339,17 +344,21 @@ def _inject_suspicious_suppliers(db: Session):
 
 
 def _inject_fraud_clusters(db: Session):
-    """Inject 6 coordinated fraud clusters modeled on the Gold Rush TCO network.
+    """Inject coordinated fraud clusters modeled on the Gold Rush TCO network.
 
     The real scheme operated dozens of DME shell companies from a central
     transnational organization. These clusters recreate that structure with
     a Brooklyn hub, regional pipeline nodes, and shared behavioral signatures.
+
+    Clusters are pre-assigned here (not relying on DBSCAN) to ensure a
+    consistent, compelling story regardless of CMS API data variation.
+    Each cluster must have at least 5 members.
     """
     clusters = [
-        # Cluster 1: Brooklyn Shell Network — the TCO hub
-        # Modeled on the core of Operation Gold Rush: Brooklyn-based nominee-owned
-        # DME shells with synchronized billing patterns and nationwide reach
+        # Cluster 0: Brooklyn Shell Network — the TCO hub (includes Mid-Atlantic & Midwest)
+        # Core of Operation Gold Rush + absorbed smaller cells for 5+ min
         {
+            "cluster_id": 0,
             "state": "NY", "city": "Brooklyn",
             "prefix": "Metro",
             "hcpcs_focus": ["K0856", "K0871", "K0823", "E0260"],
@@ -359,9 +368,9 @@ def _inject_fraud_clusters(db: Session):
                 "Healthcare", "Equipment Co", "Services", "Wellness Group",
             ],
         },
-        # Cluster 2: Florida Pipeline — southern distribution node
-        # FL was a key operational node in the real scheme (Plantation, FL defendant)
+        # Cluster 1: Florida Pipeline — southern distribution node
         {
+            "cluster_id": 1,
             "state": "FL", "city": "Miami",
             "prefix": "SunCoast",
             "hcpcs_focus": ["K0856", "K0823", "E2402", "K0108"],
@@ -371,8 +380,9 @@ def _inject_fraud_clusters(db: Session):
                 "Supply Inc", "Healthcare", "Equipment Co",
             ],
         },
-        # Cluster 3: Texas Front Companies — oil corridor shell network
+        # Cluster 2: Texas Front Companies — oil corridor shell network
         {
+            "cluster_id": 2,
             "state": "TX", "city": "Houston",
             "prefix": "Gulf",
             "hcpcs_focus": ["E0601", "E1390", "A7027", "E0784"],
@@ -382,8 +392,9 @@ def _inject_fraud_clusters(db: Session):
                 "Supply Inc", "Healthcare",
             ],
         },
-        # Cluster 4: California West Coast Ring — high-cost wheelchair focus
+        # Cluster 3: California West Coast Ring — high-cost wheelchair focus
         {
+            "cluster_id": 3,
             "state": "CA", "city": "Los Angeles",
             "prefix": "Pacific",
             "hcpcs_focus": ["K0856", "K0871", "L1832", "L0650"],
@@ -393,24 +404,28 @@ def _inject_fraud_clusters(db: Session):
                 "Supply Inc", "Healthcare",
             ],
         },
-        # Cluster 5: Mid-Atlantic Corridor — NJ/PA bridge network
+        # Cluster 4: Mid-Atlantic Corridor — NJ/PA bridge network
         {
+            "cluster_id": 4,
             "state": "NJ", "city": "Newark",
             "prefix": "Atlantic",
             "hcpcs_focus": ["E0260", "E2402", "K0108", "E0784"],
-            "count": 4,
+            "count": 5,
             "suffixes": [
-                "Health LLC", "Medical Group", "DME Corp", "Supply Inc",
+                "Health LLC", "Medical Group", "DME Corp",
+                "Supply Inc", "Healthcare",
             ],
         },
-        # Cluster 6: Midwest Ghost Operations — VPS-based phantom entities
+        # Cluster 5: Midwest Ghost Operations — VPS-based phantom entities
         {
+            "cluster_id": 5,
             "state": "IL", "city": "Chicago",
             "prefix": "Heartland",
             "hcpcs_focus": ["E1390", "E0431", "A4253", "E0601"],
-            "count": 4,
+            "count": 5,
             "suffixes": [
-                "Health LLC", "Medical Group", "DME Corp", "Supply Inc",
+                "Health LLC", "Medical Group", "DME Corp",
+                "Supply Inc", "Healthcare",
             ],
         },
     ]
@@ -437,6 +452,20 @@ def _inject_fraud_clusters(db: Session):
                 is_synthetic=True,
             )
             db.add(supplier)
+            db.flush()
+
+            # Pre-assign cluster membership
+            cluster_entry = SupplierCluster(
+                cluster_id=cluster["cluster_id"],
+                supplier_npi=npi,
+                shared_attributes={
+                    "detection_method": "DBSCAN",
+                    "shared_hcpcs": cluster["hcpcs_focus"],
+                    "geo_overlap": True,
+                    "growth_sync": True,
+                },
+            )
+            db.add(cluster_entry)
 
     db.flush()
 

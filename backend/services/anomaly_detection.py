@@ -192,20 +192,21 @@ def _run_z_score_analysis(db: Session) -> dict:
 def _run_cluster_detection(db: Session):
     """DBSCAN clustering for coordinated multi-NPI pattern detection.
 
-    DBSCAN (Density-Based Spatial Clustering of Applications with Noise)
-    groups suppliers that are close together in a 5-dimensional behavioral
-    feature space. Unlike K-Means, it does not require specifying the
-    number of clusters in advance — it discovers them automatically.
+    Pre-assigned clusters (from seed injection) are preserved. DBSCAN only
+    discovers additional clusters among suppliers not already assigned.
 
     The two key parameters:
       - eps=0.9: suppliers within 0.9 standard deviations are "neighbors"
       - min_samples=3: a cluster needs at least 3 core members
 
-    Post-filtering: only clusters with 5-50 members are retained.
-    Clusters under 5 are too small to indicate coordination.
-    Clusters over 50 are the legitimate-supplier baseline population.
+    Post-filtering: only DBSCAN-discovered clusters with 5-50 members are kept.
     """
     from collections import Counter
+
+    # Identify NPIs that already have pre-assigned cluster membership
+    pre_assigned_npis = set(
+        r[0] for r in db.query(SupplierCluster.supplier_npi).all()
+    )
 
     metrics_list = db.query(SupplierMetrics).all()
 
@@ -219,7 +220,12 @@ def _run_cluster_detection(db: Session):
         if existing is None or m.period > existing.period:
             latest_metrics[m.supplier_npi] = m
 
-    unique_metrics = list(latest_metrics.values())
+    # Only cluster non-pre-assigned suppliers
+    unique_metrics = [m for m in latest_metrics.values() if m.supplier_npi not in pre_assigned_npis]
+
+    if len(unique_metrics) < 5:
+        return
+
     npi_list = [m.supplier_npi for m in unique_metrics]
     features = []
     for m in unique_metrics:
@@ -238,19 +244,20 @@ def _run_cluster_detection(db: Session):
     dbscan = DBSCAN(eps=0.9, min_samples=3)
     labels = dbscan.fit_predict(X_scaled)
 
-    # Clear existing clusters
-    db.query(SupplierCluster).delete()
+    # Find the max existing cluster_id to avoid collisions
+    max_existing_id = db.query(SupplierCluster.cluster_id).order_by(
+        SupplierCluster.cluster_id.desc()
+    ).first()
+    id_offset = (max_existing_id[0] + 1) if max_existing_id else 0
 
-    # Build per-cluster member lists for shared attribute computation
-    cluster_members = {}  # cluster_id -> list of NPIs
+    # Build per-cluster member lists for DBSCAN-discovered clusters
+    cluster_members = {}
     for npi, label in zip(npi_list, labels):
         if label == -1:  # noise
             continue
-        cluster_members.setdefault(int(label), []).append(npi)
+        cluster_members.setdefault(int(label) + id_offset, []).append(npi)
 
-    # Keep only clusters with 5-50 members:
-    # - Under 5: too small to indicate coordinated fraud
-    # - Over 50: legitimate-supplier baseline population, not fraud rings
+    # Keep only clusters with 5-50 members
     cluster_members = {
         cid: npis for cid, npis in cluster_members.items()
         if 5 <= len(npis) <= 50
