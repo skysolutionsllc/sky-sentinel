@@ -1,3 +1,20 @@
+<!--
+Sky Sentinel — AI-Augmented DME Fraud Detection Platform
+Team 1 · Sky Solutions · ACT-IAC AI Hackathon 2026
+
+Project type: Full-stack AI/ML application (React 19 + FastAPI + scikit-learn + LLM)
+Domain: CMS Medicare Program Integrity — Durable Medical Equipment fraud detection
+AI/ML stack: Ensemble anomaly detection (Isolation Forest, Z-Score analysis, DBSCAN clustering)
+  + two-stage LLM pipeline (batch classification + interactive reasoning via ChatGPT 5.4 Mini)
+Key differentiator: Cross-supplier behavioral clustering detects coordinated fraud networks
+  that are invisible to traditional single-supplier analysis
+Responsible AI: Explainable AI narratives, 6-factor decomposable risk scores,
+  geographic fairness monitoring, human-in-the-loop controls, no automated enforcement
+Data: Live CMS Medicare Supplier API (real NPIs) + synthetic fraud modeled on
+  Operation Gold Rush ($10.6B DOJ case, June 2025)
+Deployment: Docker single-container, vendor-agnostic LLM, SQLite→PostgreSQL path
+Status: Working end-to-end prototype with 8 pages, 25+ REST endpoints, 1500+ line docs
+-->
 <p align="center">
   <img src="assets/logo-readme.png" alt="Sky Sentinel Logo" width="400">
 </p>
@@ -24,8 +41,32 @@
 
 ---
 
+## At a Glance
+
+| Capability Area | Priority | Sky Sentinel Response |
+|---|---|---|
+| **Mission Relevance** | 🔴 High | Targets CMS's #1 program integrity gap — coordinated DME fraud networks that evade single-supplier detection. Uses **real CMS Medicare API data**. Synthetic fraud modeled on **Operation Gold Rush** ($10.6B DOJ case). |
+| **Technical Soundness** | 🔴 High | **3-algorithm ML ensemble** (Isolation Forest + Z-Score + DBSCAN) + **two-stage LLM pipeline** + live CMS data integration. **Working end-to-end prototype** — not slides. Full data pipeline: CMS API ingestion → feature engineering → anomaly detection → LLM reasoning → composite scoring → investigator review. |
+| **Explainability & Responsible AI** | 🔴 High | Every alert includes a **plain-English AI-generated narrative** explaining *why*. **6-factor decomposable** risk scores — no black boxes. **No automated enforcement** — human investigators make all decisions. **Geographic fairness monitoring** for algorithmic bias. Full **audit trail** with timestamps. |
+| **Feasibility for Adoption** | 🔴 High | **Docker single-command deploy**. Real CMS API data (not toy data). SQLite→PostgreSQL migration path. **Vendor-agnostic LLM** architecture (OpenAI/Anthropic/Local/Mock). JWT + RBAC with 3 roles. **4-phase pilot roadmap** from MVP → CMS Pilot → Production → Enterprise. |
+| **Innovation** | 🟡 Medium | **First-of-kind combination:** ensemble AI + cross-supplier DBSCAN clustering + two-stage LLM pipeline for Medicare fraud. Detects coordinated networks **invisible to traditional single-supplier analysis**. Natural language investigation. Multi-agent AI development methodology. |
+| **Demo Clarity** | 🟡 Medium | **4-act narrative arc:** Dashboard overview → Individual bad actor → Hidden fraud network → Investigator in control. **Live animated recordings** embedded. 5-minute demo script with time allocations. |
+
+### 💡 Innovation Highlights
+
+> What makes Sky Sentinel fundamentally different from existing fraud detection systems:
+
+1. **Ensemble AI + Cross-Supplier Clustering** — First known combination of Isolation Forest + Z-Score + DBSCAN for Medicare DME fraud, detecting coordinated networks that are invisible to single-supplier analysis systems
+2. **Two-Stage LLM Pipeline** — Encoder-proxy classification for batch scoring + decoder reasoning for human-readable investigative narratives (following IBM watsonx architecture patterns)
+3. **Human-in-the-Loop Pattern Modeling** — Investigators don't just review AI outputs — they shape detection by defining custom patterns, tuning 6-dimension weights, and testing hypotheses against live data
+4. **Real-World Data Foundation** — Built on live CMS Medicare API data with synthetic fraud scenarios modeled on the largest DOJ healthcare fraud case ever charged ($10.6B Operation Gold Rush)
+5. **AI-Powered Development** — Built using multi-agent AI development (Opus 4.6 + Codex 5.4 + Gemini 3.1 Pro) inside Google Antigravity IDE — the same "AI amplifies humans" philosophy applied to building the product itself
+
+---
+
 ## Table of Contents
 
+- [At a Glance](#at-a-glance)
 - [Executive Summary](#executive-summary)
 - [The Problem We Solve](#the-problem-we-solve)
 - [Why Sky Sentinel Goes Beyond Traditional Detection](#why-sky-sentinel-goes-beyond-traditional-detection)
@@ -38,6 +79,7 @@
   - [AI Query — Natural Language Investigation](#-ai-query--natural-language-investigation)
   - [Settings — Model Configuration](#-settings--llm-configuration)
 - [How the AI/ML Pipeline Works](#how-the-aiml-pipeline-works)
+  - [End-to-End Data Pipeline](#end-to-end-data-pipeline)
   - [Layer 1: Statistical Anomaly Detection](#layer-1-statistical-anomaly-detection-find-the-outliers)
   - [Layer 2: Behavioral Clustering](#layer-2-behavioral-clustering-find-the-networks)
   - [Layer 3: LLM Contextual Intelligence](#layer-3-llm-contextual-intelligence-explain-the-why)
@@ -52,7 +94,8 @@
 - [Demo Recordings](#demo-recordings)
 - [Quick Start](#quick-start)
 - [Technology Stack](#technology-stack)
-- [Judging Criteria Alignment](#judging-criteria-alignment)
+- [Capability Matrix](#capability-matrix)
+- [Government Deployment Readiness](#government-deployment-readiness)
 - [Path to CMS Pilot](#path-to-cms-pilot)
 - [Future Roadmap](#future-roadmap)
 - [How We Built This: AI-Powered Development](#how-we-built-this-ai-powered-development)
@@ -62,6 +105,7 @@
 
 ---
 
+<!-- Section: Executive Summary — Mission relevance, problem definition, solution overview -->
 ## Executive Summary
 
 **Sky Sentinel** is an AI-powered investigation platform that helps Medicare program integrity analysts detect Durable Medical Equipment (DME) fraud that traditional detection systems miss.
@@ -88,6 +132,7 @@ Most importantly, Sky Sentinel keeps **investigators in control**. The platform 
 
 ---
 
+<!-- Section: Problem Statement — Real-world government problem, DME fraud challenges, detection gaps -->
 ## The Problem We Solve
 
 ### Why DME Fraud Is Hard to Catch
@@ -114,6 +159,7 @@ Traditional ML-based detection systems (logistic regression, random forest, rule
 
 ---
 
+<!-- Section: Technical Innovation — Ensemble AI, two-stage LLM, human-in-the-loop, real data, fairness -->
 ## Why Sky Sentinel Goes Beyond Traditional Detection
 
 ### 1. Ensemble AI — Multi-Model Detection
@@ -178,7 +224,7 @@ A dedicated Fairness & Bias Review panel on the dashboard monitors alert distrib
 
 ## Application Pages
 
-Sky Sentinel consists of seven interconnected pages, each designed for a specific phase of the investigation workflow.
+Sky Sentinel consists of eight interconnected pages, each designed for a specific phase of the investigation workflow.
 
 ### 📊 Dashboard — Command Center
 
@@ -253,7 +299,7 @@ The most detailed view in the system — a complete investigation dossier for a 
 | **Risk Factor Breakdown** | Horizontal bar chart decomposing the score into 6 weighted dimensions (see [Composite Risk Scoring](#composite-risk-scoring)) |
 | **Billing Timeline** | Line chart showing **4 quarters** (2024-Q2 through 2025-Q1) of claims volume and billing amounts — reveals ramp-up patterns and seasonal anomalies |
 | **AI Risk Assessment** | Full LLM-generated narrative analysis with KEY CONCERNS, EVIDENCE SUMMARY, and RECOMMENDED ACTIONS (see below) |
-| **Investigator Actions** | Three buttons: **Escalate** (formal investigation), **Monitor** (watchlist), **Dismiss** (false positive) — all logged with timestamps |
+| **Investigator Actions** | Three buttons: **Escalate** (formal investigation), **Monitor** (watchlist), **Dismiss** (false positive) — all logged with timestamps. **Admin and Investigator only** — hidden for Viewer role |
 | **Recent Claims Table** | Paginated table of individual claims with HCPCS codes, billing amounts, dates, and status |
 
 #### AI Risk Assessment (LLM-Generated Narrative)
@@ -291,12 +337,23 @@ Reveals what traditional detection completely misses: **behaviorally similar sup
 | Feature | Detail |
 |---|---|
 | **Cluster Cards** | Member count, collective risk score, shared attributes, geographic footprint |
-| **Network Graph** | Interactive SVG network visualization showing connections between cluster members, with node coloring by risk score |
+| **Network Graph** | Interactive SVG network visualization with adaptive concentric ring layouts for large clusters — all members visible without overlap |
 | **Shared Attributes Panel** | Behavioral similarities: overlapping HCPCS categories, synchronized growth, geographic clustering, similar incorporation timelines |
 | **LLM Cluster Narrative** | AI-generated explanation of why the group appears coordinated and what investigation angles to pursue |
 | **Member Drill-Down** | Click any cluster member to navigate to their individual Supplier Detail view |
 
-**The demo story:** Show a cluster where no single supplier individually exceeds traditional thresholds — but together, they reveal a coordinated billing operation. This is the scenario that traditional detection systems fundamentally cannot catch. Our synthetic fraud clusters are modeled on **Operation Gold Rush** (DOJ, June 2025) — the $10.6 billion DME fraud case where a transnational criminal organization purchased dozens of shell DME companies and used stolen identities to bill Medicare nationwide.
+**6 Pre-Assigned Fraud Rings (Operation Gold Rush):** Each cluster has a minimum of 5 members and is modeled on the real $10.6B DOJ case:
+
+| Cluster | Location | Members | Gold Rush Parallel |
+|---|---|---|---|
+| **Metro** | Brooklyn, NY | 8 | TCO hub — nominee-owned shells with nationwide reach |
+| **SunCoast** | Miami, FL | 6 | Southern distribution pipeline |
+| **Gulf** | Houston, TX | 5 | Oil corridor front companies |
+| **Pacific** | Los Angeles, CA | 5 | West Coast high-cost wheelchair ring |
+| **Atlantic** | Newark, NJ | 5 | Mid-Atlantic corridor bridge network |
+| **Heartland** | Chicago, IL | 5 | Midwest ghost operations |
+
+**The demo story:** Show a cluster where no single supplier individually exceeds traditional thresholds — but together, they reveal a coordinated billing operation. This is the scenario that traditional detection systems fundamentally cannot catch.
 
 ---
 
@@ -311,6 +368,7 @@ Where Sky Sentinel's **Human-in-the-Loop philosophy** comes to life. Investigato
 | Control | Function |
 |---|---|
 | **6-Dimension Threshold Sliders + Risk Cutoff** | Adjustable sensitivity for: Billing Volume vs. Peers, Growth Rate, HCPCS Concentration, Geographic Spread, LLM Contextual Weight, Cluster Association — plus a risk threshold cutoff. Each slider updates the alert population in real-time |
+| **Saved Weight Configurations** | Save, load, rename, and delete named weight configurations (e.g., "Shell Company Focus", "Geographic Targeting") for rapid hypothesis switching |
 | **Pattern Builder** | Define custom detection patterns in natural language: "Show me DME suppliers in Florida incorporated in the last 12 months billing more than 2x peer average for power wheelchairs" |
 | **Hypothesis Tester** | Test pattern definitions against the live dataset to preview results before committing |
 | **Saved Patterns** | Store and retrieve investigator-defined patterns for reuse and team sharing |
@@ -356,10 +414,11 @@ Configurable model selection with support for multiple providers:
 | Provider | Available Models |
 |---|---|
 | **OpenAI** *(default)* | ChatGPT 5.4 Mini, ChatGPT 5.4 Nano, GPT-4.1, GPT-4.1 Mini, GPT-4.1 Nano, o3, o4-mini, GPT-4o, GPT-4o Mini |
+| **Anthropic** | Claude Sonnet 4, Claude Opus 4, Claude 3.7 Sonnet, Claude 3.5 Sonnet, Claude 3.5 Haiku |
 | **Local (Ollama)** | Llama 3, Mistral, DeepSeek R1, Qwen 2.5, Phi-4, Gemma 3 |
 | **Mock (Demo)** | Pre-generated narratives for offline/demo use |
 
-The architecture supports swappable LLM providers via an abstract `BaseLLMProvider` interface — additional providers can be added without code changes. API keys are stored in browser localStorage and sent via headers — never logged on the server.
+The architecture supports swappable LLM providers via an abstract `BaseLLMProvider` interface — additional providers can be added without code changes. API keys are stored per-provider in browser localStorage and sent via request headers — never logged on the server.
 
 ---
 
@@ -367,11 +426,11 @@ The architecture supports swappable LLM providers via an abstract `BaseLLMProvid
 
 Sky Sentinel uses **JWT-based authentication** with three pre-configured roles:
 
-| Role | Dashboard | Alerts | Clusters | AI Query | Investigation Controls | Settings |
-|---|---|---|---|---|---|---|
-| **Admin** | ✅ | ✅ | ✅ | ✅ | ✅ Full access | ✅ LLM config, API keys |
-| **Investigator** | ✅ | ✅ | ✅ | ✅ | ✅ Threshold tuning | ❌ Hidden |
-| **Viewer** | ✅ | ✅ | ✅ | ✅ | ❌ Hidden | ❌ Hidden |
+| Role | Dashboard | Alerts | Clusters | AI Query | Investigation Controls | Investigator Actions | Settings |
+|---|---|---|---|---|---|---|---|
+| **Admin** | ✅ | ✅ | ✅ | ✅ | ✅ Full access | ✅ Escalate/Monitor/Dismiss | ✅ LLM config, API keys |
+| **Investigator** | ✅ | ✅ | ✅ | ✅ | ✅ Threshold tuning | ✅ Escalate/Monitor/Dismiss | ❌ Hidden |
+| **Viewer** | ✅ | ✅ Read-only | ✅ | ❌ Hidden | ❌ Hidden | ❌ Hidden | ❌ Hidden |
 
 **Login Credentials:**
 
@@ -391,9 +450,64 @@ Admins see a "View As" switcher in the sidebar that instantly previews the app a
 
 ---
 
+<!-- Section: AI/ML Pipeline — Technical soundness, data pipeline (ingestion→processing→output), architecture -->
 ## How the AI/ML Pipeline Works
 
-Sky Sentinel's detection engine uses a **three-layer pipeline** that produces a composite risk score for every monitored supplier. This section explains each layer in detail so any team member or judge can understand how the system works.
+Sky Sentinel's detection engine uses a **three-layer pipeline** that produces a composite risk score for every monitored supplier. This section explains each layer in detail so any reviewer can understand how the system works.
+
+### End-to-End Data Pipeline
+
+> **Data flow from ingestion to investigator action:**
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        DATA INGESTION                                   │
+│  CMS Medicare API (300+ real suppliers) + Synthetic Fraud Scenarios      │
+│  cms_client.py → seed_data.py                                           │
+└──────────────────────────────┬──────────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────────────┐
+│                     FEATURE ENGINEERING                                  │
+│  7 behavioral metrics: total_billed, claim_count, beneficiary_count,     │
+│  unique_hcpcs, avg_billed_per_claim, qoq_growth_rate, geo_spread        │
+└──────────────────────────────┬──────────────────────────────────────────┘
+                               │
+         ┌─────────────────────┼─────────────────────┐
+         ▼                     ▼                     ▼
+┌────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│   LAYER 1      │  │     LAYER 2      │  │     LAYER 3      │
+│   Statistical  │  │   Behavioral     │  │   LLM Contextual │
+│   Detection    │  │   Clustering     │  │   Intelligence   │
+│                │  │                  │  │                  │
+│ Isolation      │  │ Pre-assigned     │  │ ChatGPT 5.4 Mini │
+│ Forest +       │  │ Gold Rush +      │  │ Narrative        │
+│ Z-Score +      │  │ DBSCAN           │  │ Analysis         │
+│ Time-Series    │  │ Discovery        │  │                  │
+└───────┬────────┘  └────────┬─────────┘  └────────┬─────────┘
+        └───────────────────┬┘                     │
+                            ▼                      │
+┌───────────────────────────────────────────────────▼─────────────────────┐
+│                    COMPOSITE RISK SCORING                                │
+│  6 weighted factors → single 0-100 score (adjustable by investigators)  │
+└──────────────────────────────┬──────────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────────────┐
+│                      ALERT GENERATION                                    │
+│  Ranked alerts with AI narratives, evidence tags, cluster associations   │
+└──────────────────────────────┬──────────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────────────┐
+│                   INVESTIGATOR REVIEW                                    │
+│  Human-in-the-Loop: Escalate / Monitor / Dismiss (logged + auditable)   │
+└──────────────────────────────┬──────────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────────────┐
+│                     FEEDBACK LOOP                                        │
+│  Decision logging → baseline recalibration → model retraining (Phase 3) │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+> **Key insight:** Data flows from CMS API ingestion through three parallel detection layers, merges into a transparent composite score, and terminates at a human investigator — never at an automated enforcement action.
 
 ### Layer 1: Statistical Anomaly Detection (Find the Outliers)
 
@@ -436,11 +550,18 @@ IsolationForest(n_estimators=100, contamination=0.10, random_state=42)
 **What it is:** DBSCAN (Density-Based Spatial Clustering of Applications with Noise) is a clustering algorithm that groups data points based on density. Unlike K-Means (which requires specifying the number of clusters in advance), DBSCAN automatically discovers clusters of any shape and any quantity, and marks isolated points as noise.
 
 **How it works in Sky Sentinel:**
+
+Sky Sentinel uses a **dual-layer cluster strategy**:
+
+1. **Pre-assigned Gold Rush clusters** — 6 coordinated fraud rings (34 suppliers, 5–8 members each) are seeded with pre-assigned cluster membership, modeled directly on Operation Gold Rush's transnational shell company network. These persist regardless of data variation.
+
+2. **DBSCAN discovery** — Additional clusters among the remaining supplier population are discovered automatically:
 ```python
-DBSCAN(eps=0.8, min_samples=2)
+DBSCAN(eps=0.9, min_samples=3)  # post-filter: keep only 5-50 members
 ```
-- **eps=0.8** — two suppliers are considered "neighbors" if their standardized feature distance is less than 0.8 standard deviations
-- **min_samples=2** — a cluster must have at least 2 suppliers
+- **eps=0.9** — two suppliers are considered "neighbors" if their standardized feature distance is less than 0.9 standard deviations
+- **min_samples=3** — a core point needs at least 3 neighbors
+- **Post-filter** — only clusters with 5–50 members are retained (under 5 is too small to indicate coordination; over 50 is the legitimate baseline population)
 
 The algorithm operates on standardized behavioral features: billing volume, growth rate, HCPCS mix, geographic footprint, and enrollment timing. Suppliers that are close together in this multi-dimensional feature space get grouped into clusters.
 
@@ -558,9 +679,9 @@ The system supports **swappable LLM providers** (OpenAI, Local/Ollama, Mock) con
 | Decision | Rationale |
 |---|---|
 | **Single SPA** | Consolidated into one unified dashboard for seamless investigator workflow |
-| **SQLite over PostgreSQL** | Zero-config portability — judges can clone and run immediately without database setup. SQLAlchemy ORM provides a clean migration path to PostgreSQL for production |
+| **SQLite over PostgreSQL** | Zero-config portability — anyone can clone and run immediately without database setup. SQLAlchemy ORM provides a clean migration path to PostgreSQL for production |
 | **Multi-model LLM routing** | Two-tier architecture (batch + interactive) — both use ChatGPT 5.4 Mini in hackathon MVP; designed to swap batch tier for encoder models (BERT/RoBERTa) in production |
-| **Swappable LLM adapter** | Abstract `BaseLLMProvider` interface with `OpenAIProvider`, `LocalProvider`, and `MockLLMProvider` fallback — if the API is unavailable during demo, the system gracefully falls back to pre-generated narratives. Additional providers can be plugged in via the same interface |
+| **Swappable LLM adapter** | Abstract `BaseLLMProvider` interface with `OpenAIProvider`, `AnthropicProvider`, `LocalProvider`, and `MockLLMProvider` fallback — if the API is unavailable during demo, the system gracefully falls back to pre-generated narratives. Additional providers can be plugged in via the same interface |
 | **Real CMS data + synthetic fraud** | Real supplier data provides authenticity; synthetic fraud scenarios ensure compelling demo stories |
 | **Two-tier model routing** | Optimizes API cost and latency without sacrificing interactive quality |
 
@@ -590,8 +711,8 @@ Sky Sentinel needed to demonstrate detection against **realistic provider behavi
 | Type | Count | Purpose |
 |---|---|---|
 | **Individual suspicion profiles** | 15 suppliers | Shell-company-style entities with differentiated fraud signatures: billing volume spikes, geographic impossibility, new entity ramp-up, HCPCS concentration, templated documentation, and cluster kingpin roles |
-| **Coordinated cluster suppliers** | 32 suppliers (6 clusters × 4–8 members) | Modeled on the Operation Gold Rush transnational network — a Brooklyn hub, Florida pipeline, Texas front companies, California ring, Mid-Atlantic corridor, and Midwest ghost operations, each with synchronized enrollment, shared HCPCS focus, and coordinated growth |
-| **Claims** | ~6,000+ total | Realistic claim records with actual HCPCS codes (K0856, K0871, E0260, etc.), billing amounts at the top of CMS fee schedule ranges for shell companies, and templated medical necessity documentation mimicking organized fraud |
+| **Coordinated cluster suppliers** | 34 suppliers (6 clusters × 5–8 members) | Modeled on the Operation Gold Rush transnational network — a Brooklyn hub (8), Florida pipeline (6), Texas front companies (5), California ring (5), Mid-Atlantic corridor (5), and Midwest ghost operations (5), each with synchronized enrollment, shared HCPCS focus, coordinated growth, and pre-assigned cluster membership. All clusters have a minimum of 5 members |
+| **Claims** | ~5,500+ total | Realistic claim records with actual HCPCS codes (K0856, K0871, E0260, etc.), billing amounts at the top of CMS fee schedule ranges for shell companies, and templated medical necessity documentation mimicking organized fraud |
 
 **Why synthetic fraud:** Real fraud data is classified and protected. We created synthetic fraud profiles based on publicly documented fraud patterns from DOJ enforcement actions — specifically **Operation Gold Rush (June 2025)**, the $10.6 billion DME fraud case where a transnational criminal organization purchased dozens of shell DME companies, stole the identities of over 1 million Americans, and submitted billions in fraudulent Medicare claims. Each synthetic supplier has a differentiated fraud signature so the detection pipeline demonstrates diverse pattern recognition against real-world tactics.
 
@@ -687,6 +808,7 @@ Sky Sentinel exposes a RESTful API built with **FastAPI**. Interactive documenta
 
 ---
 
+<!-- Section: Responsible AI — Explainability, transparency, human oversight, fairness, bias monitoring, privacy -->
 ## Responsible AI & Fairness
 
 Sky Sentinel is designed with responsible AI principles embedded at every level:
@@ -716,6 +838,7 @@ Sky Sentinel is designed with responsible AI principles embedded at every level:
 
 ---
 
+<!-- Section: AI Governance — Auditability, traceability, false positive safeguards, decision documentation -->
 ## AI Governance & Auditability
 
 Systems supporting CMS must balance fraud detection, fairness to providers, and auditability of the investigative process. Sky Sentinel is designed to satisfy three core governance questions:
@@ -773,6 +896,8 @@ Sky Sentinel implements a **closed-loop feedback mechanism** that uses investiga
 | **5. Model Retraining** | In production (Phase 3), false positive and valid concern labels become supervised training data for the ML ensemble, enabling the Isolation Forest and Z-Score models to learn investigator-validated ground truth |
 
 > **Current MVP status:** Steps 1–3 are fully implemented. Steps 4–5 represent the production evolution where investigator decisions directly retrain the detection models — the architectural hooks (decision logging, labeled outcomes) are already in place.
+
+> **How the system learns from outcomes:** Every time an investigator marks a flagged supplier as a false positive or validates it as a genuine concern, that decision is captured alongside the full scoring context — which risk factors triggered the alert, at what weights, and what the supplier's behavioral profile looked like at the time. Over successive review cycles, the system aggregates these labeled outcomes to recalibrate peer baselines (so that legitimately high-billing supplier profiles gradually stop triggering), suppress recurring false-positive patterns from re-entering the alert queue, and — in the production roadmap — feed investigator-validated ground truth back into the ML ensemble as supervised training labels, enabling the Isolation Forest and Z-Score models to sharpen their decision boundaries based on real-world investigative judgment rather than static statistical thresholds alone.
 
 ### 5. Outbound Insurance Provider Notification
 
@@ -895,9 +1020,10 @@ python3 -m backend.data.seed_data
 
 This will:
 - Fetch **300 real DME suppliers** from the CMS Medicare API
-- Generate **47 synthetic fraud suppliers** (15 individual shell companies + 32 in 6 coordinated clusters) — modeled on Operation Gold Rush
-- Create **~5,500 claims** with realistic HCPCS codes
-- Run the full anomaly detection pipeline (Isolation Forest + Z-Score + DBSCAN)
+- Generate **49 synthetic fraud suppliers** (15 individual shell companies + 34 in 6 coordinated clusters with 5+ members each) — modeled on Operation Gold Rush
+- Pre-assign **6 fraud ring clusters** with shared attributes (HCPCS focus, geographic overlap, growth sync)
+- Create **~5,500 claims** with realistic HCPCS codes and CMS-style claim IDs (`CLM-XXXXXXXX`)
+- Run the full anomaly detection pipeline (Isolation Forest + Z-Score + DBSCAN for additional discovery)
 - Generate **AI-powered alerts** with LLM narratives for high-risk suppliers (using the batch model tier)
 
 ### 5. Start the Application
@@ -987,19 +1113,24 @@ On first boot the container now creates the schema immediately, starts uvicorn r
 |---|---|---|---|
 | **Frontend** | React | 19.1 | Component-based UI framework |
 | **Build Tool** | Vite | 6.4 | Fast dev server with hot module replacement |
+| **Routing** | react-router-dom | 7.1 | Client-side SPA routing with RBAC guards |
 | **Charts** | Recharts | 2.15 | Dashboard visualizations (area, bar, pie, line charts) |
 | **Maps** | react-simple-maps | 3.0 | Geographic risk heatmap (US choropleth) |
 | **Network Graphs** | SVG (vanilla) | — | Cluster network visualization |
 | **Color Scales** | d3-scale-chromatic | 3.1 | Geographic heatmap color gradients |
-| **Markdown** | react-markdown | 9.0 | AI narrative rendering |
+| **Icons** | lucide-react | 0.577 | Consistent iconography across all pages |
+| **Markdown** | react-markdown | 10.1 | AI narrative rendering |
 | **Styling** | Vanilla CSS | — | Custom glassmorphism design system with CSS variables |
 | **Backend** | FastAPI | 0.115 | Async Python REST API framework |
+| **Validation** | Pydantic | 2.10 | Request/response model validation |
 | **ORM** | SQLAlchemy | 2.0 | Database abstraction (SQLite → PostgreSQL migration path) |
 | **Database** | SQLite | 3.x | Zero-config portable database |
-| **ML** | scikit-learn | 1.6 | Isolation Forest, DBSCAN, StandardScaler |
+| **ML** | scikit-learn | 1.5.x | Isolation Forest, DBSCAN, StandardScaler |
 | **Data** | Pandas + NumPy | — | Data processing and feature engineering |
-| **LLM** | OpenAI GPT | ChatGPT 5.4 Mini | Multi-tier contextual analysis and narrative generation |
-| **HTTP Client** | HTTPX | — | Async CMS API data fetching |
+| **LLM (Primary)** | OpenAI GPT | ChatGPT 5.4 Mini | Multi-tier contextual analysis and narrative generation |
+| **LLM (Alt)** | Anthropic Claude | Sonnet 4 / Opus 4 | Alternative LLM provider for vendor flexibility |
+| **Auth** | PyJWT + bcrypt | — | JWT token generation + password hashing |
+| **HTTP Client** | HTTPX | 0.28 | Async CMS API data fetching |
 
 ---
 
@@ -1073,19 +1204,122 @@ Sky Sentinel exposes a comprehensive REST API that enables integration with exis
 
 ---
 
-## Judging Criteria Alignment
+<!--
+Capability Matrix: Maps Sky Sentinel's capabilities across six evaluation dimensions:
+1. Mission Relevance (high) — government problem alignment, real-world applicability
+2. Technical Soundness (high) — AI/ML techniques, data pipeline, architecture, working prototype
+3. Explainability & Responsible AI (high) — transparent outputs, traceability, bias awareness, human-in-the-loop
+4. Feasibility for Adoption (high) — practical architecture, available data, integration, security/governance
+5. Innovation (medium) — novel approach, creative use of AI
+6. Demo Clarity (medium) — clear documentation, storytelling, logical flow
+-->
+## Capability Matrix
 
-| Criteria | Weight | How Sky Sentinel Addresses It |
-|---|---|---|
-| **Mission Relevance** | High | Directly targets CMS Program Integrity's #1 challenge — proactive DME fraud detection. Uses real CMS supplier data. Designed as a complementary intelligence layer alongside existing detection infrastructure |
-| **Technical Soundness** | High | Three-layer detection pipeline (statistical ML + behavioral clustering + LLM reasoning). Composite risk scoring with transparent, adjustable weights. Peer grouping methodology grounded in CMS data practices. Real API integration. Multi-model LLM routing for cost optimization |
-| **Explainability & Responsible AI** | High | Every alert includes AI-generated narrative reasoning. Risk scores decompose into 6 visible factors. No automated enforcement — all actions require investigator confirmation. Decision audit trail. Geographic fairness monitoring. Privacy-first design with no PHI/PII |
-| **Feasibility for Agency Adoption** | High | SQLite → PostgreSQL migration path via SQLAlchemy. Swappable LLM adapter supports vendor flexibility (OpenAI, local LLMs). Comprehensive REST API (25+ endpoints) enables integration with existing case management workflows. Outbound escalation notifications to insurance carriers. Mock fallback ensures demo resilience. JWT-based role-based access control with 3 roles (Admin, Investigator, Viewer) |
-| **Innovation** | High | First-of-kind integration of ensemble AI anomaly detection + two-stage LLM pipeline for Medicare fraud. Cross-supplier behavioral clustering. Natural language investigation queries. Three-tier model routing for cost/quality optimization. Investigator-defined pattern modeling |
-| **Demo Clarity** | Medium | Clear 4-act narrative arc: Dashboard overview → Individual detection → Coordinated network → Investigator control. Interactive demo with real data. AI Approach banner explicitly communicates advantages |
+> This section maps Sky Sentinel's key capabilities across six dimensions, with cross-references to the detailed README sections.
 
 ---
 
+### 1. Mission Relevance (🔴 High Weight)
+
+**Solves a real government problem with clear alignment to the use case.**
+
+| Evaluation Focus | Sky Sentinel Evidence | README Section |
+|---|---|---|
+| **Alignment to mission need** | Directly targets CMS Program Integrity's #1 challenge — proactive DME fraud detection. Addresses the $60B+ annual cost of Medicare fraud, waste, and abuse | [The Problem We Solve](#the-problem-we-solve) |
+| **Understanding of real-world constraints** | Uses real CMS Medicare API data (not toy data). Synthetic fraud modeled on Operation Gold Rush ($10.6B DOJ case). Designed as a complementary layer alongside existing CMS detection infrastructure — not a replacement | [Data Sources & Rationale](#data-sources--rationale), [Real-World Validation](#real-world-validation-operation-gold-rush) |
+| **Relevance of AI approach** | Ensemble AI specifically addresses the gap traditional systems miss: coordinated multi-NPI fraud networks that fragment activity below individual thresholds | [Why Sky Sentinel Goes Beyond Traditional Detection](#why-sky-sentinel-goes-beyond-traditional-detection) |
+| **Value to agency** | Moves program integrity from reactive review (catch fraud after payment) to proactive prevention (detect coordinated schemes before they dissolve). Reduces false positive burden through peer-relative scoring and multi-algorithm consensus | [Executive Summary](#executive-summary) |
+
+---
+
+### 2. Technical Soundness (🔴 High Weight)
+
+**Strong, working AI solution with solid architecture.**
+
+| Evaluation Focus | Sky Sentinel Evidence | README Section |
+|---|---|---|
+| **Appropriate AI/ML techniques** | 3 complementary ML algorithms (Isolation Forest, Z-Score, DBSCAN) + two-stage LLM pipeline (batch classification + interactive reasoning). Each technique chosen for a specific detection gap | [How the AI/ML Pipeline Works](#how-the-aiml-pipeline-works) |
+| **Data pipeline clarity** | End-to-end flow: CMS API ingestion → 7-feature engineering → 3-layer parallel detection → composite scoring → alert generation → investigator review → feedback loop | [End-to-End Data Pipeline](#end-to-end-data-pipeline) |
+| **Architecture & design decisions** | React 19 + FastAPI + SQLAlchemy + scikit-learn. Key decisions documented: SQLite for portability, multi-model LLM routing, swappable provider architecture, real data + synthetic fraud | [Architecture](#architecture), [Key Design Decisions](#key-design-decisions) |
+| **Working prototype** | Fully functional end-to-end application. Docker single-command deploy. Live animated demo recordings embedded. 8 interconnected pages. 25+ REST API endpoints | [Quick Start](#quick-start), [Demo Recordings](#demo-recordings), [API Reference](#api-reference) |
+
+---
+
+### 3. Explainability & Responsible AI (🔴 High Weight)
+
+**Transparent, understandable outputs with responsible use of AI.**
+
+| Evaluation Focus | Sky Sentinel Evidence | README Section |
+|---|---|---|
+| **Explainable outputs (not black box)** | Every alert includes a full AI-generated investigative narrative citing specific HCPCS codes, dollar amounts, enrollment timing, and cluster associations. Risk scores decompose into 6 visible, named factors | [Supplier Drill-Down](#-supplier-drill-down--investigator-deep-dive), [Composite Risk Scoring](#composite-risk-scoring) |
+| **Traceability of decisions** | All threshold adjustments, investigator actions (Escalate/Monitor/Dismiss), AI queries, and weight configurations are logged with timestamps. Documented criteria for alert generation. Full evidence chain from trigger to action | [AI Governance & Auditability](#ai-governance--auditability) |
+| **Bias, fairness, and risk consideration** | Geographic fairness monitoring panel tracks alert distributions across states. Peer-group scoring prevents regional bias. Weight adjustability lets investigators reduce emphasis on potentially biased factors. No PHI/PII processed | [Responsible AI & Fairness](#responsible-ai--fairness) |
+| **Human-in-the-loop** | No automated enforcement — zero claims are blocked or NPIs revoked without human confirmation. Investigators control detection via 6-dimension threshold sliders, custom pattern definitions, and hypothesis testing | [Investigation Controls](#-investigation-controls--human-in-the-loop-pattern-modeling) |
+| **Outputs understandable to non-technical audience** | AI narratives written in plain English with specific evidence cited. Example: *"50% of claims involve ultra-high-cost power wheelchair accessories (K0871: $23,687) — highly unusual for a supplier enrolled only 4 months ago"* | [AI Risk Assessment (LLM-Generated Narrative)](#ai-risk-assessment-llm-generated-narrative) |
+
+---
+
+### 4. Feasibility for Adoption (🔴 High Weight)
+
+**Realistically deployable in a government environment.**
+
+| Evaluation Focus | Sky Sentinel Evidence | README Section |
+|---|---|---|
+| **Practical architecture** | Docker single-container deployment. SQLite for zero-config portability with SQLAlchemy ORM for PostgreSQL migration. Background bootstrap worker that doesn't block healthchecks. Graceful LLM degradation (mock fallback) | [Architecture](#architecture), [Quick Start](#quick-start) |
+| **Use of available data sources** | Live CMS Medicare DME Supplier API (data.cms.gov) — the same dataset CMS Program Integrity teams use. 7 additional production data sources identified and documented | [Data Sources & Rationale](#data-sources--rationale) |
+| **Reasonable integration approach** | API-first architecture with 25+ REST endpoints. Designed as a backend intelligence engine — partner systems consume risk scores, alerts, and AI narratives via standard REST. Outbound carrier notification simulation demonstrates downstream integration | [REST API Documentation](#rest-api-documentation), [Government Deployment Readiness](#government-deployment-readiness) |
+| **Awareness of constraints** | FedRAMP-aware roadmap. Vendor-agnostic LLM architecture (swap providers without code changes). JWT + 3-tier RBAC. No data egress — SQLite runs locally. No PHI/PII processed. Audit trail for all decisions | [Government Deployment Readiness](#government-deployment-readiness), [Path to CMS Pilot](#path-to-cms-pilot) |
+| **Clear MVP → production path** | 4-phase roadmap with specific milestones: MVP (current) → CMS Pilot (3–6 mo) → Production (6–12 mo) → Enterprise. Each phase builds on architectural hooks already implemented | [Path to CMS Pilot](#path-to-cms-pilot) |
+
+---
+
+### 5. Innovation (🟡 Medium Weight)
+
+**Creative or novel use of AI.**
+
+| Evaluation Focus | Sky Sentinel Evidence | README Section |
+|---|---|---|
+| **Unique approach** | First-of-kind combination: ensemble AI anomaly detection (3 algorithms) + dual-layer clustering (pre-assigned + DBSCAN discovery) + two-stage LLM pipeline (batch + interactive) — specifically designed for Medicare DME fraud. Cross-supplier behavioral clustering detects coordinated networks that traditional single-supplier analysis fundamentally cannot | [Innovation Highlights](#-innovation-highlights), [Why Sky Sentinel Goes Beyond](#why-sky-sentinel-goes-beyond-traditional-detection) |
+| **Creative use of models, data, or workflows** | Two-stage LLM pipeline separates fast classification from expensive reasoning (following IBM watsonx patterns). Natural language investigation interface. Multi-agent AI development methodology (3 AI agents built the product in parallel). Real CMS data + synthetic fraud modeled on DOJ cases | [Multi-Model LLM Routing](#multi-model-llm-routing), [How We Built This](#how-we-built-this-ai-powered-development) |
+| **Forward-thinking solution** | Closed-loop feedback mechanism where investigator decisions (false positive / valid concern) feed back into baseline recalibration and eventually model retraining — architectural hooks already implemented | [AI Governance & Auditability - How the system learns](#4-how-does-the-system-learn-from-false-positives) |
+
+---
+
+### 6. Demo Clarity (🟡 Medium Weight)
+
+**Clear and compelling communication of what was built, how it works, and why it matters.**
+
+| Evaluation Focus | Sky Sentinel Evidence | README Section |
+|---|---|---|
+| **Clear documentation** | 1,500+ line README with structured sections, tables, code samples, architecture diagrams, and embedded screenshots/recordings | This README |
+| **Storytelling** | 4-act narrative arc: Dashboard (30s) → Individual bad actor (1.5 min) → Hidden fraud network (2 min) → Investigator in control (1 min). Each act has a clear "aha moment" | [Demo Walkthrough](#demo-walkthrough-5-minutes) |
+| **Logical demo flow** | Progressive complexity: start with what traditional systems catch → reveal what they miss → show investigator empowerment | [Demo Walkthrough](#demo-walkthrough-5-minutes) |
+| **Easy-to-understand value** | Tagline: *"Moving CMS from reactive review to proactive prevention — where AI amplifies human expertise, not replaces it."* AI Approach banner on dashboard explains 4 detection pillars at a glance | [Executive Summary](#executive-summary), [Dashboard](#-dashboard--command-center) |
+
+
+
+---
+
+<!-- Section: Government Deployment — Security, data sovereignty, FedRAMP, vendor independence, scalability -->
+## Government Deployment Readiness
+
+> Sky Sentinel is designed with government deployment constraints in mind from day one — not as an afterthought.
+
+| Constraint | How Sky Sentinel Addresses It |
+|---|---|
+| **Security & Authorization** | JWT-based authentication with bcrypt password hashing. 3-tier RBAC (Admin, Investigator, Viewer) with granular page and action-level access controls. Role impersonation for admin testing. API keys stored in browser localStorage, never logged server-side |
+| **Data Sovereignty** | SQLite database runs entirely locally — no data egress to external services. CMS API data is public, non-PHI provider-level statistics. LLM calls can be routed to on-premise models via Ollama (no cloud dependency required). All beneficiary data is synthetic |
+| **FedRAMP Pathway** | Phase 3 roadmap targets FedRAMP-compliant deployment on AWS GovCloud or Azure Government. Current architecture is cloud-agnostic — Docker container runs anywhere |
+| **Vendor Independence** | Abstract `BaseLLMProvider` interface supports 4 providers (OpenAI, Anthropic, Local/Ollama, Mock) — swap via `.env` configuration, no code changes. Prevents vendor lock-in for government procurement |
+| **Audit & Compliance** | Every investigator action (Escalate, Monitor, Dismiss) is logged with timestamp and user ID. Threshold adjustments, weight configurations, and AI queries are recorded. Full traceability from alert trigger to disposition |
+| **Integration with Existing Systems** | API-first architecture (25+ REST endpoints) designed to serve as a backend intelligence engine for existing case management workflows. Outbound carrier notification simulation demonstrates downstream system integration |
+| **Scalability** | SQLAlchemy ORM provides a clean SQLite → PostgreSQL migration path. Background bootstrap worker handles data operations without blocking application healthchecks. Stateless API design supports horizontal scaling |
+| **Graceful Degradation** | `MockLLMProvider` ensures the system functions without any external AI service — anomaly detection scores are generated independently of LLM availability. No single point of failure |
+| **Privacy by Design** | Zero PHI/PII processed. All beneficiary data is synthetic. Real CMS data limited to publicly available provider-level aggregated statistics from data.cms.gov |
+
+---
+
+<!-- Section: Adoption Roadmap — MVP→Pilot→Production→Enterprise pathway with specific milestones -->
 ## Path to CMS Pilot
 
 Sky Sentinel is architecturally designed for progression from hackathon MVP to production deployment:
@@ -1138,38 +1372,62 @@ Beyond the CMS pilot path, Sky Sentinel's architecture supports expansion to:
 
 Sky Sentinel wasn't built using a traditional software development lifecycle. **We used AI at every stage of development** — the same philosophy we applied to the product itself (AI augmenting human expertise) was applied to how we built it.
 
-### AI Tools Used
+### Development Environment: Google Antigravity IDE
 
-| Tool | Role in Development |
-|---|---|
-| **Google Gemini** (Antigravity / AI Coding Agent) | Primary development partner — architecture design, full-stack code generation, iterative debugging, code review, and codebase refactoring. Gemini served as a tireless pair programmer across the entire 15,000+ line codebase |
-| **OpenAI ChatGPT 5.4 Mini** | Powers the production LLM features — supplier risk narratives, cluster analysis, natural language queries, and text similarity detection |
+We developed Sky Sentinel inside **Google's Antigravity IDE** — an agent-centric development environment purpose-built for AI-augmented software engineering. Antigravity enabled us to run **multiple AI agents simultaneously**, each specializing in different aspects of the codebase, orchestrated through a unified workspace.
 
-### Our Approach: AI-First, Not Waterfall
+### PRD-First Methodology
 
-Traditional hackathon teams follow a compressed version of SDLC — requirements → design → assign tasks → develop → test → integrate. With a 5-person team and 10 days, that approach would have produced a narrower, less polished product.
+Before writing a single line of code, we invested heavily in a comprehensive **Product Requirements Document (PRD)**. This wasn't a typical feature list — it was a detailed specification covering the fraud detection problem space, CMS data sources, detection methodology, user workflows, and technical architecture. The PRD served as the authoritative blueprint that every AI agent referenced, ensuring consistency across all components built in parallel.
 
-**Instead, we took an AI-first approach:**
+> **Why PRD-first?** When multiple AI agents work simultaneously, they need a shared source of truth. The PRD prevented divergent implementations and ensured every component — from the anomaly detection pipeline to the React frontend — aligned with a unified product vision.
 
-1. **Product vision + AI execution** — The Product Owner defined what investigators need. The AI coding agent turned those requirements into working code in real-time — no handoff delays, no sprint planning, no task tickets. The human focused on *what to build* and *why*; the AI handled *how to build it*.
+### Multi-Agent Development Team
 
-2. **Iterative refinement over waterfall phases** — Instead of sequential design → build → test, we ran hundreds of rapid feedback loops: describe a feature → generate code → review → refine → ship. Each cycle took minutes, not days.
+We ran **three specialized AI agents simultaneously**, each handling different domains of the codebase:
 
-3. **Full-stack AI pair programming** — The AI agent wrote Python backend code, React frontend components, SQL models, CSS design systems, API integrations, and documentation — all within the same conversation context. This eliminated the traditional bottleneck of context-switching between specialists.
+| Agent | Model | Role | Scope |
+|---|---|---|---|
+| **Core Orchestrator** | Opus 4.6 | Plan creation, architecture design, and majority of development orchestration | Created the overall implementation plan, designed the three-layer AI/ML pipeline architecture, wrote the data models and business logic, managed cross-component integration, and coordinated the work across all agents |
+| **Complex Tasks & Testing** | Codex 5.4 | Deep technical implementation and quality assurance | Handled complex algorithmic work — Isolation Forest tuning, DBSCAN parameter optimization, composite scoring calibration, LLM prompt engineering — plus test coverage and edge case analysis |
+| **Frontend & Design** | Gemini 3.1 Pro | UI/UX design and React component development | Built the glassmorphism design system, all 8 React pages, interactive visualizations (D3 heatmap, SVG network graphs, Recharts dashboards), responsive layouts, and CSS animations |
 
-4. **Deep research on demand** — When we needed to understand CMS data schemas, DOJ enforcement patterns (Operation Gold Rush), or IBM's fraud detection architecture (FAMS), the AI performed rapid deep research and synthesized findings into actionable design decisions — work that would traditionally require days of manual research.
+### How the Agents Collaborated
+
+```
+ PRD (Source of Truth)
+         │
+    ┌────┴────┐
+    │ Opus 4.6 │ ← Core: architecture, data models, API design, pipeline logic
+    └────┬────┘
+         │ orchestrates
+    ┌────┴──────────────┐
+    │                    │
+┌───┴────┐      ┌───────┴──────┐
+│Codex 5.4│      │Gemini 3.1 Pro│
+│Testing  │      │Frontend      │
+│Complex  │      │Design        │
+└─────────┘      └──────────────┘
+```
+
+1. **Opus 4.6** read the PRD and created a multi-phase implementation plan, then handled the majority of backend development — FastAPI routers, SQLAlchemy models, the anomaly detection pipeline (`anomaly_detection.py`), seed data generation, authentication, and the bootstrap system.
+
+2. **Codex 5.4** tackled the most technically complex components — tuning ML hyperparameters, building the dual-layer cluster strategy (pre-assigned Gold Rush rings + DBSCAN discovery), designing the LLM prompt chains for supplier risk narratives, and stress-testing the composite scoring formula across edge cases.
+
+3. **Gemini 3.1 Pro** built the entire frontend experience — from the glassmorphism CSS design system to the 8 interconnected React pages, including the interactive US choropleth heatmap, SVG cluster network graphs, animated risk gauges, and the AI Query conversational interface.
 
 ### What This Enabled
 
-- **15,000+ lines of production-quality code** across a full-stack application (React 19, FastAPI, SQLAlchemy, scikit-learn, OpenAI integration)
-- **7 interconnected application pages** with a cohesive glassmorphism design system
+- **8,600+ lines of production-quality code** across a full-stack application (React 19, FastAPI, SQLAlchemy, scikit-learn, multi-provider LLM integration)
+- **8 interconnected application pages** with a cohesive glassmorphism design system
 - **3 ML algorithms** (Isolation Forest, Z-Score, DBSCAN) with a composite scoring pipeline
-- **Multi-model LLM integration** with 3 providers (OpenAI, Local/Ollama, Mock fallback)
+- **Multi-model LLM integration** with 4 providers (OpenAI, Anthropic, Local/Ollama, Mock fallback)
 - **Live CMS API integration** with real Medicare supplier data
-- **Docker deployment** with single-container production builds
-- **Comprehensive documentation** (this README: 1,100+ lines)
+- **Docker deployment** with single-container production builds and Coolify support
+- **JWT authentication** with 3-tier RBAC and role impersonation
+- **Comprehensive documentation** (this README: 1,500+ lines)
 
-> **The meta-story:** Sky Sentinel demonstrates that AI isn't just a product feature — it's a force multiplier for the entire development process. The same principle we're proposing for CMS fraud investigators (AI amplifies human expertise) is exactly how we built this platform.
+> **The meta-story:** Sky Sentinel demonstrates that AI isn't just a product feature — it's a force multiplier for the entire development process. The same principle we're proposing for CMS fraud investigators (AI amplifies human expertise) is exactly how we built this platform. We practiced what we preach.
 
 ## Team
 
@@ -1190,24 +1448,33 @@ Traditional hackathon teams follow a compressed version of SDLC — requirements
 ```
 sky-sentinel/
 ├── README.md                          # This file
+├── PRD.md                             # Product Requirements Document
 ├── .env.example                       # Environment variables (including multi-model config)
+├── Dockerfile                         # Multi-stage production build
+├── entrypoint.sh                      # Container startup script
 ├── package.json                       # Frontend dependencies + convenience scripts
 ├── vite.config.js                     # Vite config with API proxy
 ├── index.html                         # HTML entry point
 │
 ├── src/                               # React Frontend
 │   ├── main.jsx                       # App entry point
-│   ├── App.jsx                        # Router + layout
+│   ├── App.jsx                        # Router + layout + RBAC route guards
 │   ├── index.css                      # Sky Solutions glassmorphism design system
+│   ├── contexts/
+│   │   └── AuthContext.jsx            # JWT auth state + role impersonation
+│   ├── utils/
+│   │   ├── geoRisk.js                 # Geographic risk computation utilities
+│   │   └── hcpcs.js                   # HCPCS code descriptions and lookups
 │   ├── services/
-│   │   └── api.js                     # Centralized API client
+│   │   └── api.js                     # Centralized API client with auth headers
 │   ├── components/
 │   │   ├── layout/
-│   │   │   └── Sidebar.jsx            # Navigation sidebar
+│   │   │   └── Sidebar.jsx            # Navigation sidebar + View As switcher
 │   │   └── charts/
 │   │       ├── USHeatmap.jsx          # US choropleth risk heatmap
 │   │       └── FairnessPanel.jsx      # Algorithmic fairness monitor
 │   └── pages/
+│       ├── Login.jsx                  # JWT authentication login page
 │       ├── Dashboard.jsx              # Command center + AI approach banner
 │       ├── Alerts.jsx                 # Alert rankings with diversified evidence
 │       ├── SupplierDetail.jsx         # Investigator deep dive + LLM narrative
@@ -1217,16 +1484,18 @@ sky-sentinel/
 │       └── Settings.jsx              # LLM provider/model configuration
 │
 ├── backend/                           # Python FastAPI Backend
-│   ├── main.py                        # FastAPI app + CORS + routers
+│   ├── main.py                        # FastAPI app + CORS + routers + SPA serving
+│   ├── auth.py                        # JWT authentication + RBAC (bcrypt, PyJWT)
+│   ├── bootstrap.py                   # Background seed/repair worker for Docker
 │   ├── config.py                      # Environment config (incl. multi-model routing)
 │   ├── requirements.txt               # Python dependencies
 │   ├── api/                           # REST API routers
 │   │   ├── dashboard.py               # Stats, trends, geo risk
 │   │   ├── suppliers.py               # List, detail, timeline, peers
-│   │   ├── alerts.py                  # Ranked alerts, actions
+│   │   ├── alerts.py                  # Ranked alerts, actions, escalation
 │   │   ├── clusters.py                # Cluster detection views
 │   │   ├── claims.py                  # Claim feed, submission
-│   │   └── investigation.py           # Pattern builder, AI query, hypothesis tester
+│   │   └── investigation.py           # Pattern builder, AI query, weight configs
 │   ├── services/                      # Business logic
 │   │   ├── anomaly_detection.py       # Isolation Forest + Z-Score + DBSCAN
 │   │   └── llm_service.py            # Multi-model LLM service (batch + interactive tiers)
@@ -1237,11 +1506,12 @@ sky-sentinel/
 │       ├── database.py                # SQLAlchemy engine + sessions
 │       └── models.py                  # 10 ORM models
 │
-└── assets/                            # Logos, screenshots, source docs
+└── assets/                            # Logos, screenshots, demo recordings
     ├── logo.png                       # Sky Sentinel logo (light)
     ├── logo-dark.png                  # Sky Sentinel logo (dark)
-    ├── icon-logo.png                  # Favicon icon
-    └── screenshot-*.png               # Application screenshots
+    ├── logo-readme.png                # README header logo
+    ├── screenshot-*.png               # Application screenshots
+    └── demo-*.webp                    # Animated demo walkthrough recordings
 ```
 
 ---
@@ -1251,6 +1521,8 @@ sky-sentinel/
 - **ACT-IAC** for organizing the AI in Action Hackathon
 - **Centers for Medicare & Medicaid Services (CMS)** for publicly available Medicare provider utilization data
 - **OpenAI** for ChatGPT 5.4 Mini powering the contextual analysis engine
+- **Anthropic** for Claude model support in the multi-provider LLM architecture
+- **Google** for the Antigravity IDE that enabled multi-agent AI development
 
 ---
 
