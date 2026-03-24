@@ -14,7 +14,7 @@ def run_anomaly_detection(db: Session):
       1. Peer groups   — group suppliers by state, compute baseline stats
       2. Isolation Forest — 100-tree ensemble, 7 features, contamination=10%
       3. Z-Score        — deviation from state peer group mean billing
-      4. DBSCAN         — behavioral clustering, eps=1.0, min_samples=5
+      4. DBSCAN         — behavioral clustering, eps=0.9, min_samples=3, post-filter 5-50
       5. Composite      — weighted combination of all signals (0-100 scale)
       6. Cluster risk   — average composite score per cluster
     """
@@ -198,10 +198,12 @@ def _run_cluster_detection(db: Session):
     number of clusters in advance — it discovers them automatically.
 
     The two key parameters:
-      - eps=1.0: suppliers within 1.0 standard deviations are "neighbors"
-      - min_samples=5: a cluster needs at least 5 core members
+      - eps=0.9: suppliers within 0.9 standard deviations are "neighbors"
+      - min_samples=3: a cluster needs at least 3 core members
 
-    Points that don't belong to any cluster are labeled as noise (-1).
+    Post-filtering: only clusters with 5-50 members are retained.
+    Clusters under 5 are too small to indicate coordination.
+    Clusters over 50 are the legitimate-supplier baseline population.
     """
     from collections import Counter
 
@@ -233,25 +235,25 @@ def _run_cluster_detection(db: Session):
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    dbscan = DBSCAN(eps=1.0, min_samples=5)
+    dbscan = DBSCAN(eps=0.9, min_samples=3)
     labels = dbscan.fit_predict(X_scaled)
 
     # Clear existing clusters
     db.query(SupplierCluster).delete()
 
     # Build per-cluster member lists for shared attribute computation
-    # Filter out very large clusters (>50 members) — these are the
-    # legitimate-supplier baseline population, not fraud rings.
     cluster_members = {}  # cluster_id -> list of NPIs
     for npi, label in zip(npi_list, labels):
         if label == -1:  # noise
             continue
         cluster_members.setdefault(int(label), []).append(npi)
 
-    # Remove baseline clusters (too large to be coordinated fraud)
+    # Keep only clusters with 5-50 members:
+    # - Under 5: too small to indicate coordinated fraud
+    # - Over 50: legitimate-supplier baseline population, not fraud rings
     cluster_members = {
         cid: npis for cid, npis in cluster_members.items()
-        if len(npis) <= 50
+        if 5 <= len(npis) <= 50
     }
 
     # Compute ACTUAL shared attributes for each cluster
