@@ -49,3 +49,11 @@ make_transparent.py
 resize_logo.py
 assets/*.pptx
 assets/operation-gold-rush-research.md
+
+# Internal business and planning docs (excluded from Github)
+PRD.md
+assets/*.docx
+assets/*.pdf
+assets/*Research*.md
+assets/Human-in-the-Loop*.md
+assets/*Judging*.md
