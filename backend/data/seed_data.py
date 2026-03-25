@@ -667,11 +667,11 @@ def _generate_alerts(db: Session):
         if score.cluster_association_score > 30:
             factor_evidence.append((score.cluster_association_score + 20, f"Linked to coordinated supplier network — possible shell company ring under common control"))
 
-        # LLM context / documentation analysis
+        # Peer deviation / Z-score analysis
         if score.llm_context_score > 70:
-            factor_evidence.append((score.llm_context_score, f"AI detected templated medical necessity documentation across claims — identical language patterns across entities"))
+            factor_evidence.append((score.llm_context_score, f"Extreme peer deviation: billing {score.llm_context_score:.0f}th percentile vs state peer group mean — statistical outlier consistent with shell company billing patterns"))
         elif score.llm_context_score > 50:
-            factor_evidence.append((score.llm_context_score, f"Documentation patterns flagged — possible copy-paste narratives across multiple shell companies"))
+            factor_evidence.append((score.llm_context_score, f"Above-average peer deviation ({score.llm_context_score:.0f}th percentile) — billing significantly above state peer group baseline"))
 
         # Enrollment recency — check if new entity (shell acquisition indicator)
         if supplier.enrollment_date:

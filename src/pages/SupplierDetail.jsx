@@ -45,16 +45,16 @@ const FACTOR_LABELS = {
   growth_rate: 'Growth Rate',
   hcpcs_mix: 'HCPCS Mix',
   geographic_spread: 'Geographic Spread',
-  llm_context: 'AI Contextual',
+  llm_context: 'Peer Deviation',
   cluster_association: 'Cluster Link',
 }
 
 const FACTOR_DESCRIPTIONS = {
   billing_volume: 'Isolation Forest: 100-tree ensemble analyzes 7 features simultaneously (billed amount, claims, beneficiaries, HCPCS diversity, avg per claim, growth, geo spread). Anomalies are data points easily isolated — fewer tree splits needed. Score 0–100.',
   growth_rate: 'Time-Series Analysis: measures quarter-over-quarter billing acceleration. Formula: min(|growth_rate| × 2, 100). A 400% quarterly growth → score 100. Legitimate suppliers typically grow ±10% per quarter.',
-  hcpcs_mix: 'Peer Deviation: compares this supplier\'s HCPCS code diversity against state peers. Shell companies concentrate on 2–3 high-cost codes (e.g., K0856 power wheelchairs at $30K+). Score increases with concentration.',
+  hcpcs_mix: 'Peer Comparison: measures this supplier\'s HCPCS code diversity against state peers. Shell companies concentrate on 2–3 high-cost codes (e.g., K0856 power wheelchairs at $30K+) while legitimate suppliers bill a diverse mix. Score increases with concentration relative to peer average.',
   geographic_spread: 'Geographic Impossibility: measures the ratio of states served relative to supplier location. A Brooklyn DME company billing patients across 12+ states scores near 100. Legitimate suppliers typically serve 1–2 states.',
-  llm_context: 'Z-Score Peer Analysis: measures standard deviations from state peer group mean. Formula: min(|billing − peer_mean| / peer_std × 25, 100). A Z-score of 4+ means the supplier is a statistical impossibility within its peer group.',
+  llm_context: 'Z-Score Peer Deviation: measures how many standard deviations this supplier\'s billing deviates from its state peer group mean. Formula: min(|billing − peer_mean| / peer_std × 25, 100). A Z-score of 4+ means the supplier is a statistical impossibility within its peer group.',
   cluster_association: 'DBSCAN Clustering: density-based scan in 5-dimensional behavioral space (eps=0.8, min_samples=3). Cluster members score 60; non-members score 10. Detects coordinated activity even when individual entities stay below thresholds.',
 }
 

@@ -337,6 +337,20 @@ def _compute_composite_scores(db: Session, isolation_scores: dict, z_scores: dic
     # Clear existing scores
     db.query(AnomalyScore).delete()
 
+    # Compute peer-average HCPCS diversity per state for concentration scoring
+    from collections import defaultdict
+    state_hcpcs = defaultdict(list)
+    all_metrics = db.query(SupplierMetrics, Supplier.state).join(
+        Supplier, SupplierMetrics.supplier_npi == Supplier.npi
+    ).all()
+    for met, state in all_metrics:
+        if met.unique_hcpcs is not None:
+            state_hcpcs[state].append(met.unique_hcpcs)
+    peer_avg_hcpcs = {
+        state: float(np.mean(vals)) if vals else 5.0
+        for state, vals in state_hcpcs.items()
+    }
+
     for supplier in suppliers:
         npi = supplier.npi
         iso = isolation_scores.get(npi, 30)
@@ -358,15 +372,33 @@ def _compute_composite_scores(db: Session, isolation_scores: dict, z_scores: dic
 
         growth_score = min(abs(m.growth_rate or 0) * 3.0, 100) if m else 20
         geo_score = min((m.geographic_spread or 0) * 100, 100) if m else 15
-        hcpcs_score = min((m.unique_hcpcs or 1) * 12, 100) if m else 20
+
+        # HCPCS concentration score — fewer unique codes relative to peer avg
+        # means higher concentration, which is MORE suspicious.
+        # Shell companies focus on 2-3 high-cost codes; legitimate suppliers
+        # bill a diverse mix.  Score: how concentrated vs. peers (0-100).
+        if m and m.unique_hcpcs is not None:
+            peer_avg = peer_avg_hcpcs.get(supplier.state, 5.0)
+            if peer_avg > 0:
+                # ratio < 1 means more concentrated than peers → suspicious
+                concentration_ratio = (m.unique_hcpcs or 1) / peer_avg
+                # Invert: lower ratio (fewer codes) → higher score
+                hcpcs_score = min(max((1.0 - concentration_ratio) * 120 + 40, 0), 100)
+            else:
+                hcpcs_score = 20
+        else:
+            hcpcs_score = 20
 
         # Weighted composite
+        # Peer deviation (Z-score) measures how far billing deviates from
+        # the state peer group mean.  This is a statistical signal, NOT an
+        # LLM-derived score.
         composite = (
             iso * 0.20 +
             growth_score * 0.20 +
             hcpcs_score * 0.15 +
             geo_score * 0.15 +
-            z * 0.15 +  # stands in for LLM context score
+            z * 0.15 +  # peer deviation (Z-score)
             cluster_score * 0.15
         )
         composite = min(max(composite, 0), 100)
@@ -386,7 +418,7 @@ def _compute_composite_scores(db: Session, isolation_scores: dict, z_scores: dic
             growth_rate_score=growth_score,
             hcpcs_mix_score=hcpcs_score,
             geographic_spread_score=geo_score,
-            llm_context_score=z,
+            llm_context_score=z,  # legacy field name; stores Z-score peer deviation
             cluster_association_score=cluster_score,
             isolation_forest_score=iso,
             z_score=z,

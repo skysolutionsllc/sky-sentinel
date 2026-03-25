@@ -67,7 +67,7 @@ const WEIGHT_LABELS = {
   growth_rate_weight: 'Growth Rate',
   hcpcs_mix_weight: 'HCPCS Mix Deviation',
   geographic_spread_weight: 'Geographic Spread',
-  llm_context_weight: 'AI Contextual',
+  llm_context_weight: 'Peer Deviation',
   cluster_association_weight: 'Cluster Association',
   risk_threshold: 'Risk Threshold',
 }
