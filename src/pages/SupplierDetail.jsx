@@ -142,7 +142,7 @@ export default function SupplierDetail() {
               </div>
               <span className="factor-value">{Math.round(value)}</span>
               {FACTOR_DESCRIPTIONS[key] && (
-                <div style={{ fontSize: 11, color: 'var(--sky-text-muted)', lineHeight: 1.5, marginTop: 4, gridColumn: '1 / -1' }}>
+                <div style={{ fontSize: 11, color: 'var(--sky-text-secondary)', lineHeight: 1.5, marginTop: 4, gridColumn: '1 / -1' }}>
                   {FACTOR_DESCRIPTIONS[key]}
                 </div>
               )}

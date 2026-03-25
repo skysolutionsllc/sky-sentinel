@@ -85,7 +85,7 @@ DEMO_USERS = {
         "display_name": "KC Juvvadi",
     },
     # Generic demo fallback
-    "admin": {
+    "admin@skysolutions.com": {
         "password_hash": hash_password("sky123"),
         "role": UserRole.ADMIN,
         "display_name": "Demo Admin",
