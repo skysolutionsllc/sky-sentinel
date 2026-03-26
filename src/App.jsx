@@ -9,6 +9,7 @@ import Clusters from './pages/Clusters'
 import Investigation from './pages/Investigation'
 import AIQuery from './pages/AIQuery'
 import Settings from './pages/Settings'
+import AskJames from './components/AskJames'
 
 function ProtectedRoute({ children, requiredRoles }) {
   const { effectiveRole } = useAuth()
@@ -52,6 +53,7 @@ function AppRoutes() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <AskJames />
     </div>
   )
 }

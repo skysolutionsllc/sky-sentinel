@@ -64,6 +64,9 @@ app.include_router(clusters.router, prefix="/api/clusters", tags=["Clusters"])
 app.include_router(claims.router, prefix="/api/claims", tags=["Claims"])
 app.include_router(investigation.router, prefix="/api/investigation", tags=["Investigation"])
 
+from backend.api import ask_james
+app.include_router(ask_james.router, prefix="/api/ask-james", tags=["Ask James"])
+
 
 @app.get("/api/health")
 def health_check():

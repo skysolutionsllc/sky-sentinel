@@ -20,10 +20,10 @@ function ClusterGraph({ cluster, navigate }) {
   const count = members.length
 
   // Adaptive sizing based on member count
-  const size = count > 12 ? 340 : count > 8 ? 300 : 260
+  const size = count > 12 ? 440 : count > 8 ? 400 : 360
   const center = size / 2
-  const hubR = count > 12 ? 22 : 26
-  const memberR = count > 12 ? 12 : count > 8 ? 14 : 16
+  const hubR = count > 12 ? 28 : 32
+  const memberR = count > 12 ? 15 : count > 8 ? 17 : 20
 
   // For large clusters, use concentric rings
   const rings = []
@@ -158,7 +158,7 @@ export default function Clusters() {
           </div>
 
           {/* ── Cluster Cards Grid ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(560px, 1fr))', gap: 24 }}>
             {clusters.map((c, i) => {
               const isExpanded = expanded === c.cluster_id
               const riskLevel = c.cluster_risk_score >= 80 ? 'critical' : c.cluster_risk_score >= 60 ? 'high' : 'medium'
