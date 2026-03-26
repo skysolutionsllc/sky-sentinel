@@ -115,18 +115,22 @@ def ask_james(req: AskJamesRequest, request: Request):
     """Chat with 'James' — the AI-powered team assistant."""
 
     provider_name = request.headers.get("x-llm-provider") or LLM_PROVIDER
-    api_key = request.headers.get("x-llm-api-key")
+    api_key = request.headers.get("x-llm-api-key") or ""
 
     # Build the message thread
     messages = [{"role": "system", "content": KNOWLEDGE_BASE}]
     for msg in req.messages[-10:]:  # Keep last 10 messages to avoid token overflow
         messages.append({"role": msg.role, "content": msg.content})
 
+    # Determine which Anthropic key to use (prefer env var for Ask James)
+    anthropic_key = ANTHROPIC_API_KEY or (api_key if provider_name == "anthropic" else "")
+    openai_key = OPENAI_API_KEY or (api_key if provider_name == "openai" else "")
+
     # Direct LLM call — prefer Anthropic Sonnet 4.6 for accuracy
     try:
-        if api_key or ANTHROPIC_API_KEY:
+        if anthropic_key:
             import anthropic
-            client = anthropic.Anthropic(api_key=api_key or ANTHROPIC_API_KEY)
+            client = anthropic.Anthropic(api_key=anthropic_key)
             response = client.messages.create(
                 model="claude-sonnet-4-20250514",
                 max_tokens=800,
@@ -135,10 +139,10 @@ def ask_james(req: AskJamesRequest, request: Request):
             )
             return {"response": response.content[0].text}
 
-        elif OPENAI_API_KEY:
+        elif openai_key:
             # Fallback to OpenAI if no Anthropic key
             import openai
-            client = openai.OpenAI(api_key=OPENAI_API_KEY)
+            client = openai.OpenAI(api_key=openai_key)
             response = client.chat.completions.create(
                 model="chatgpt-5.4-mini",
                 messages=messages,
