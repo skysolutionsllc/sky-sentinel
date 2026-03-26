@@ -43,7 +43,7 @@ export default function AskJames() {
     setLoading(true)
 
     try {
-      const res = await fetch(`${API_BASE}/api/ask-james`, {
+      const res = await fetch(`${API_BASE}/api/ask-james/chat`, {
         method: 'POST',
         headers: getLLMHeaders(),
         body: JSON.stringify({

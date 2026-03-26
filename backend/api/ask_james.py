@@ -110,7 +110,7 @@ class AskJamesRequest(BaseModel):
     messages: List[ChatMessage]
 
 
-@router.post("")
+@router.post("/chat")
 def ask_james(req: AskJamesRequest, request: Request):
     """Chat with 'James' — the AI-powered team assistant."""
 
