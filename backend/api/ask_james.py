@@ -47,12 +47,15 @@ We intentionally chose unsupervised algorithms. Operation Gold Rush is our PROOF
 
 All weights are adjustable by investigators via sliders in real-time.
 
-# LLM INTEGRATION (Two-Stage)
-- Batch tier (seed time): ChatGPT 5.4 Mini generates risk assessment narratives for each flagged supplier
-- Interactive tier: Premium model for investigator natural-language queries
+# LLM INTEGRATION (Two-Stage: Encoder → Decoder)
+We use a two-stage LLM pipeline inspired by IBM watsonx architecture patterns:
+- **Stage 1: Encoder-proxy (Batch tier)**: Used at seed time for rapid classification-style scoring. Generates structured risk assessments for all suppliers during data ingestion. In this hackathon MVP, we use ChatGPT 5.4 Mini as the encoder proxy. In production, this tier would be swapped for purpose-built encoder models like BERT or RoBERTa for sub-millisecond classification — no code changes needed, just update .env.
+- **Stage 2: Decoder (Interactive tier)**: Used for human-readable investigative narratives and natural language queries. Premium reasoning model for the depth and nuance that user-facing features demand.
+- The key insight — borrowed from IBM's ensemble approach — is that you don't need expensive reasoning for every operation, only for the cases that require human-readable explanation.
 - Narratives structured as: KEY CONCERNS → EVIDENCE SUMMARY → RECOMMENDED ACTIONS
 - LLM EXPLAINS, never DECIDES. No automated enforcement.
 - 4 providers: OpenAI, Anthropic, Local (Ollama), Mock (demo resilience without API keys)
+- Architecture supports swapping models per tier via .env — no code changes required.
 
 # AI EXPLAINABILITY
 Every score is fully decomposable into 6 named, visible factors. Investigators see exactly how much each factor contributes. They can adjust weights, save configurations, test hypotheses. LLM outputs are clearly labeled as AI-generated. No black box.
