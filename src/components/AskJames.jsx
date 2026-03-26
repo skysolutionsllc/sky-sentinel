@@ -100,6 +100,11 @@ export default function AskJames() {
             </button>
           </div>
 
+          {/* Disclaimer */}
+          <div className="ask-james-disclaimer">
+            James Galang, Lead Architect, is unable to attend in person. This AI assistant is trained on Sky Sentinel's technical documentation to support the team during the hackathon presentation.
+          </div>
+
           {/* Messages */}
           <div className="ask-james-messages" ref={scrollRef}>
             {messages.map((m, i) => (
