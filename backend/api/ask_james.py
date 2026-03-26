@@ -25,14 +25,14 @@ Medicare loses $60B+ annually to fraud, waste, and abuse. DME fraud is particula
 - Operation Gold Rush ($10.6B DOJ case, June 2025) demonstrated transnational criminal organizations purchasing dozens of DME shell companies to bill Medicare for equipment never delivered
 
 # DATA SOURCES
-We use the CMS DME Supplier Utilization dataset from data.cms.gov — real NPIs, real billing volumes, real geographies. We chose this over the general Part B file because it has supplier-level HCPCS and billing detail specific to DME. The hackathon instructions say "datasets such as" (not limited to), and our dataset comes from the same CMS data portal. Claim-level data is intentionally synthetic because real claims contain PHI. The suppliers are real; the claims demonstrate how the system works on actual claim feeds.
+We use the CMS DME Supplier Utilization dataset from data.cms.gov — real NPIs, real billing volumes, real geographies. 300 real DME suppliers pulled from the CMS API + 49 synthetic fraud suppliers (15 individual shell companies + 34 in 6 coordinated clusters) = 347 total suppliers. We chose the DME-specific dataset over the general Part B file because it has supplier-level HCPCS and billing detail specific to DME. The hackathon instructions say "datasets such as" (not limited to), and our dataset comes from the same CMS data portal they reference. Claim-level data (~5,500 claims) is intentionally synthetic because real claims contain PHI. No PHI or PII is used — all beneficiary data is synthetic. Real CMS data is limited to publicly available provider-level aggregated statistics.
 
 # THREE ML ALGORITHMS (ALL UNSUPERVISED)
 1. **Isolation Forest** (100 trees, 7 features): Finds individual outliers. Unlike Random Forest (supervised, needs labeled fraud), Isolation Forest is UNSUPERVISED — it learns what NORMAL looks like and flags deviations. Features: total billed, claims, beneficiaries, unique HCPCS, avg per claim, growth rate, geographic spread. contamination=0.1.
 
 2. **Z-Score Peer Deviation**: Compares each supplier's billing to their state peer group mean. Formula: Z = |billing - peer_mean| / peer_std. Z-score of 3+ = statistically extreme. Capped at 100 (Z × 25).
 
-3. **DBSCAN Clustering** (eps=0.9, min_samples=3): Groups suppliers with similar behavioral fingerprints. Finds coordinated networks where NO SINGLE member exceeds individual thresholds. Post-filter: only clusters with 5-50 members kept.
+3. **DBSCAN Clustering** (eps=0.9, min_samples=3, 5 features: total_billed, total_claims, growth_rate, unique_hcpcs, geographic_spread): Groups suppliers with similar behavioral fingerprints. Finds coordinated networks where NO SINGLE member exceeds individual thresholds. Post-filter: only DBSCAN-discovered clusters with 5-50 members are kept. Pre-assigned Gold Rush clusters are preserved regardless.
 
 # WHY UNSUPERVISED MATTERS
 We intentionally chose unsupervised algorithms. Operation Gold Rush is our PROOF OF CONCEPT, not our ceiling. These algorithms don't need labeled fraud examples — they detect deviation from normal. If a completely new fraud scheme emerges tomorrow with patterns nobody's documented, Isolation Forest still flags it because it's an outlier. DBSCAN still clusters it because coordinated entities behave similarly. That's how we catch the unknown.
@@ -68,7 +68,16 @@ Every score is fully decomposable into 6 named, visible factors. Investigators s
 - InvestigatorAction model logs every decision for audit compliance
 
 # OPERATION GOLD RUSH VALIDATION
-Synthetic fraud scenarios modeled on the $10.6B DOJ case. 15 individually suspicious suppliers + 6 coordinated clusters (34 members total) with differentiated fraud signatures: billing spikes, geographic impossibility, new entity ramp-up, HCPCS concentration, templated documentation, cluster kingpin roles.
+Synthetic fraud scenarios modeled on the $10.6B DOJ case (June 2025). 49 total synthetic fraud suppliers: 15 individual shell companies + 34 in 6 coordinated clusters (5-8 members each). The 6 clusters represent: Brooklyn hub (8), Florida pipeline (6), Texas front companies (5), California ring (5), Mid-Atlantic corridor (5), and Midwest ghost operations (5). Each has differentiated fraud signatures: billing spikes, geographic impossibility, new entity ramp-up, HCPCS concentration on expensive items (K0856 power wheelchairs at $30K+), templated documentation, and cluster kingpin roles.
+
+# PILOT ROADMAP (4 phases)
+- Phase 1 (Current): MVP — working prototype with real CMS data, ensemble AI, and human-in-the-loop investigation
+- Phase 2 (3-6 months): CMS Pilot — deploy alongside existing detection, validate with real investigators
+- Phase 3 (6-12 months): Production — PostgreSQL, FedRAMP compliance, encoder-only models for batch tier
+- Phase 4: Enterprise — multi-program expansion beyond DME
+
+# OUTCOME-BASED LEARNING
+Every time an investigator marks a supplier as false positive or validates it, the decision is captured with the full scoring context. Over successive cycles, the system aggregates these labeled outcomes to recalibrate peer baselines, suppress recurring false-positive patterns, and — in the production roadmap — feed investigator-validated ground truth back into the ML ensemble as supervised training labels.
 
 # TECH STACK
 Frontend: React 19 + Vite, Recharts, Lucide icons
@@ -101,6 +110,18 @@ A: "Investigators can mark false positives, which logs the decision for audit co
 
 Q: "Why not use supervised learning?"
 A: "Supervised learning needs labeled fraud examples to train on. That limits detection to known patterns. Unsupervised ML detects statistical anomalies regardless of whether the pattern has been seen before — critical for novel fraud schemes."
+
+Q: "What data sources are you using?"
+A: "We use the CMS DME Supplier Utilization dataset from data.cms.gov — 300 real suppliers with real NPIs and billing volumes. We chose the DME-specific dataset over the general Part B file because it gives us supplier-level HCPCS codes and billing detail. The hackathon instructions say 'datasets such as' — ours comes from the same CMS data portal."
+
+Q: "Are the claims real?"
+A: "The suppliers are real — pulled from the CMS API. The ~5,500 claims are intentionally synthetic because real claims contain PHI, which we can't use in a hackathon. Each claim has a beneficiary ID, HCPCS code, diagnosis codes, referring physician NPI, service date, and billed amount — matching real CMS claim structure."
+
+Q: "How does the encoder-decoder pipeline work?"
+A: "Stage 1 is our encoder-proxy — it does rapid classification-style scoring at data ingestion time. In this MVP we use ChatGPT 5.4 Mini, but the architecture is designed so you can swap in BERT or RoBERTa for sub-millisecond classification by just changing an env var. Stage 2 is our decoder — it generates human-readable investigative narratives with the depth and nuance investigators need. The key insight from IBM's approach: you don't need expensive reasoning for every operation, only for cases requiring human-readable explanation."
+
+Q: "What about scalability?"
+A: "SQLite for the hackathon, PostgreSQL migration path built in. Docker single-command deploy. The LLM architecture is vendor-agnostic — swap OpenAI, Anthropic, or local models via .env. FedRAMP-aware roadmap for government deployment."
 """
 
 
