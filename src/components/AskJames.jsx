@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { MessageCircle, X, Send, Loader2 } from 'lucide-react'
+import { HelpCircle, X, Send, Loader2 } from 'lucide-react'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -52,7 +52,7 @@ export default function AskJames() {
       })
       const data = await res.json()
       setMessages(prev => [...prev, { role: 'assistant', content: data.response || "Hmm, I couldn't get an answer. Try rephrasing?" }])
-    } catch (e) {
+    } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: "I'm having trouble connecting. Check that the backend is running and an API key is configured in Settings." }])
     } finally {
       setLoading(false)
@@ -68,30 +68,31 @@ export default function AskJames() {
 
   return (
     <>
-      {/* Chat Bubble */}
+      {/* Help Button — bottom left, cohesive with app nav */}
       <button
         className="ask-james-bubble"
         onClick={() => setOpen(!open)}
-        title="Ask James"
+        title="Need help? Ask James"
       >
-        {open ? (
-          <X size={22} color="white" />
-        ) : (
-          <img src="/james.png" alt="Ask James" className="ask-james-avatar-img" />
-        )}
-        {!open && <span className="ask-james-badge">?</span>}
+        {open ? <X size={20} /> : <HelpCircle size={22} />}
       </button>
 
       {/* Chat Panel */}
       {open && (
         <div className="ask-james-panel">
-          {/* Header */}
+          {/* Header with James's photo */}
           <div className="ask-james-header">
             <img src="/james.png" alt="James" className="ask-james-header-avatar" />
             <div>
               <div style={{ fontWeight: 700, fontSize: 14 }}>Ask James</div>
               <div style={{ fontSize: 11, opacity: 0.7 }}>Sky Sentinel Technical Lead</div>
             </div>
+            <button
+              className="ask-james-close"
+              onClick={() => setOpen(false)}
+            >
+              <X size={16} />
+            </button>
           </div>
 
           {/* Messages */}
@@ -109,7 +110,7 @@ export default function AskJames() {
             {loading && (
               <div className="ask-james-msg assistant">
                 <img src="/james.png" alt="" className="ask-james-msg-avatar" />
-                <div className="ask-james-msg-bubble assistant">
+                <div className="ask-james-msg-bubble assistant" style={{ display: 'flex', alignItems: 'center' }}>
                   <Loader2 size={16} className="ask-james-spinner" />
                   <span style={{ marginLeft: 8, opacity: 0.6 }}>Thinking...</span>
                 </div>

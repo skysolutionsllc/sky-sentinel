@@ -122,11 +122,23 @@ def ask_james(req: AskJamesRequest, request: Request):
     for msg in req.messages[-10:]:  # Keep last 10 messages to avoid token overflow
         messages.append({"role": msg.role, "content": msg.content})
 
-    # Direct LLM call (bypass the provider abstraction for chat-style interaction)
+    # Direct LLM call — prefer Anthropic Sonnet 4.6 for accuracy
     try:
-        if provider_name in ("openai", "mock") and (api_key or OPENAI_API_KEY):
+        if api_key or ANTHROPIC_API_KEY:
+            import anthropic
+            client = anthropic.Anthropic(api_key=api_key or ANTHROPIC_API_KEY)
+            response = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=800,
+                system=KNOWLEDGE_BASE,
+                messages=[{"role": m.role, "content": m.content} for m in req.messages[-10:]],
+            )
+            return {"response": response.content[0].text}
+
+        elif OPENAI_API_KEY:
+            # Fallback to OpenAI if no Anthropic key
             import openai
-            client = openai.OpenAI(api_key=api_key or OPENAI_API_KEY)
+            client = openai.OpenAI(api_key=OPENAI_API_KEY)
             response = client.chat.completions.create(
                 model="chatgpt-5.4-mini",
                 messages=messages,
@@ -139,17 +151,6 @@ def ask_james(req: AskJamesRequest, request: Request):
                     for item in content
                 ).strip()
             return {"response": content or "I'm not sure about that — let me check and get back to you."}
-
-        elif provider_name == "anthropic" and (api_key or ANTHROPIC_API_KEY):
-            import anthropic
-            client = anthropic.Anthropic(api_key=api_key or ANTHROPIC_API_KEY)
-            response = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=800,
-                system=KNOWLEDGE_BASE,
-                messages=[{"role": m.role, "content": m.content} for m in req.messages[-10:]],
-            )
-            return {"response": response.content[0].text}
 
         else:
             # Mock fallback
