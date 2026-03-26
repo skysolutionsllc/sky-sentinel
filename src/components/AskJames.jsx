@@ -1,13 +1,18 @@
 import { useState, useRef, useEffect } from 'react'
 import { HelpCircle, X, Send, Loader2 } from 'lucide-react'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-
 function getLLMHeaders() {
+  const provider = localStorage.getItem('llm_provider') || 'openai'
+  let apiKey = ''
+  if (provider === 'openai') {
+    apiKey = localStorage.getItem('llm_api_key_openai') || localStorage.getItem('llm_api_key') || ''
+  } else if (provider === 'anthropic') {
+    apiKey = localStorage.getItem('llm_api_key_anthropic') || localStorage.getItem('llm_api_key') || ''
+  }
   return {
     'Content-Type': 'application/json',
-    'x-llm-provider': localStorage.getItem('sky_llm_provider') || 'openai',
-    'x-llm-api-key': localStorage.getItem('sky_llm_api_key') || '',
+    'x-llm-provider': provider,
+    'x-llm-api-key': apiKey,
   }
 }
 
@@ -43,7 +48,7 @@ export default function AskJames() {
     setLoading(true)
 
     try {
-      const res = await fetch(`${API_BASE}/api/ask-james/chat`, {
+      const res = await fetch('/api/ask-james/chat', {
         method: 'POST',
         headers: getLLMHeaders(),
         body: JSON.stringify({
